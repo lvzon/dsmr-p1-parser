@@ -26,6 +26,8 @@
 
 #define READ_TIMEOUT 15
 
+// Buffer for storing telegram data
+
 char buf_telegram[BUFSIZE_TELEGRAM];
 
 
@@ -121,6 +123,7 @@ size_t read_telegram (int fd, uint8_t *buf, size_t bufsize, size_t maxfailbytes)
 
 int main (int argc, char **argv)
 {
+	
 	init_msglogger();
 	logger.loglevel = LL_VERBOSE;
 	
@@ -174,22 +177,41 @@ int main (int argc, char **argv)
 	size_t len;
 	int status = 0;
 	
-	while (len = read_telegram(fd, buf_telegram, BUFSIZE_TELEGRAM, 0)) {
-		parser_init(&parser);
-		parser_execute(&parser, buf_telegram, len, 1);
-		status = parser_finish( &parser );	// 1 if final state reached, -1 on error, 0 if final state not reached
-		if (status == 1) {
-			uint16_t crc = crc_telegram(buf_telegram, len);
-			logmsg(LL_VERBOSE, "Parsing successful, data CRC 0x%x, telegram CRC 0x%x\n", crc, parser.crc16);
-		} 
-		if (parser.parse_errors) {
-			logmsg(LL_VERBOSE, "Parse errors: %d\n", parser.parse_errors);
-			if (dumpfile) {
-				fwrite(buf_telegram, 1, len, dumpfile);
-				fflush(dumpfile);
+	do {
+	
+		while (len = read_telegram(fd, buf_telegram, BUFSIZE_TELEGRAM, BUFSIZE_TELEGRAM)) {
+			parser_init(&parser);
+			parser_execute(&parser, buf_telegram, len, 1);
+			status = parser_finish( &parser );	// 1 if final state reached, -1 on error, 0 if final state not reached
+			if (status == 1) {
+				uint16_t crc = crc_telegram(buf_telegram, len);
+				logmsg(LL_VERBOSE, "Parsing successful, data CRC 0x%x, telegram CRC 0x%x\n", crc, parser.crc16);
+			} 
+			if (parser.parse_errors) {
+				logmsg(LL_VERBOSE, "Parse errors: %d\n", parser.parse_errors);
+				if (dumpfile) {
+					fwrite(buf_telegram, 1, len, dumpfile);
+					fflush(dumpfile);
+				}
 			}
 		}
-	}
+		
+		if (terminal && len == 0) {
+			
+			// Try a different baud rate, maybe we have an old meter that runs at 9600 baud
+			
+			speed_t baudrate = cfgetispeed(&newtio);
+			
+			if (baudrate == B115200)
+				cfsetispeed(&newtio, B9600);	
+			else
+				cfsetispeed(&newtio, B115200);
+			
+			tcflush(fd, TCIFLUSH);				// Flush any data still left in the input buffer, to avoid confusing the parsers
+			tcsetattr(fd, TCSANOW, &newtio);	// Set new terminal attributes
+		}
+		
+	} while (terminal);		// If we're connected to a serial device, keep reading, otherwise exit
 	
 	if (terminal) {
 		tcsetattr(fd, TCSANOW, &oldtio);		// Restore old port settings
