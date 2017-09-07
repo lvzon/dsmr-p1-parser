@@ -122,7 +122,7 @@ long long int TST_to_time (struct parser *fsm, int arg_idx) {
 	action gas_id_old { logmsg(LL_VERBOSE, "Gas meter ID: %s\n", fsm->strarg[0]);}
 	action gas_count_old { logmsg(LL_VERBOSE, "Gas meter counter: %f %s\n", (double)fsm->arg[0] / (double)fsm->arg[1], fsm->strarg[0]); }
 	action gas_valve_old { logmsg(LL_VERBOSE, "Gas meter valve position: %lld\n", fsm->arg[0]);}	
-	action error {logmsg(LL_VERBOSE, "Error while parsing\n");fhold ; fgoto rest_of_line; } 
+	action error {logmsg(LL_VERBOSE, "Error while parsing\n"); fsm->parse_errors++ ; fhold ; fgoto rest_of_line; } 
 	
 	
 	action unknown { logmsg(LL_VERBOSE, "Unknown: %s\n", fsm->strarg[0]); fsm->strargc = 0 ; fsm->buflen = 0; }
@@ -278,7 +278,8 @@ void parser_init( struct parser *fsm )
 	fsm->strargc = 0;
 	for (arg = 0 ; arg < PARSER_MAXARGS ; arg++)
 		fsm->strarg[arg] = NULL;
-
+	fsm->parse_errors = 0;
+	
 	%% write init;
 }
 

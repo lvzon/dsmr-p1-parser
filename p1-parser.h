@@ -47,7 +47,8 @@ struct parser
 	// Variables specific to the P1-parser
 	
 	uint16_t	crc16;
-	char		*meter_timezone;	
+	char		*meter_timezone;
+	int			parse_errors;
 };
 
 // Lookup table for long long integer powers of ten

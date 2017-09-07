@@ -178,11 +178,12 @@ int main (int argc, char **argv)
 		parser_init(&parser);
 		parser_execute(&parser, buf_telegram, len, 1);
 		status = parser_finish( &parser );	// 1 if final state reached, -1 on error, 0 if final state not reached
-		uint16_t crc = crc_telegram(buf_telegram, len);
 		if (status == 1) {
+			uint16_t crc = crc_telegram(buf_telegram, len);
 			logmsg(LL_VERBOSE, "Parsing successful, data CRC 0x%x, telegram CRC 0x%x\n", crc, parser.crc16);
-		} else {
-			logmsg(LL_ERROR, "Parsing unsuccessful, data CRC 0x%x, telegram CRC 0x%x, length %lu\n", crc, parser.crc16, len);
+		} 
+		if (parser.parse_errors) {
+			logmsg(LL_VERBOSE, "Parse errors: %d\n", parser.parse_errors);
 			if (dumpfile) {
 				fwrite(buf_telegram, 1, len, dumpfile);
 				fflush(dumpfile);
