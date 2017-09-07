@@ -178,6 +178,7 @@ int main (int argc, char **argv)
 			uint16_t crc = crc_telegram(buf_telegram, len);
 			logmsg(LL_VERBOSE, "Parsing successful, data CRC 0x%x, telegram CRC 0x%x\n", crc, parser.crc16);
 		} else if (dumpfile) {
+			logmsg(LL_ERROR, "Parsing unsuccessful, data CRC 0x%x, telegram CRC 0x%x, length %lu\n", crc, parser.crc16, len);
 			fwrite(buf_telegram, 1, len, dumpfile);
 		}
 	}
