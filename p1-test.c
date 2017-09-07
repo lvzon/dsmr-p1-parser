@@ -123,11 +123,16 @@ int main (int argc, char **argv)
 	char *infile;
 	
 	if (argc < 2) {
-		logmsg(LL_NORMAL, "Usage: %s <input file or device>\n", argv[0]);
+		logmsg(LL_NORMAL, "Usage: %s <input file or device> [<output for telegrams with parse errors>]\n", argv[0]);
 		exit(1);
 	}
 	
 	infile = argv[1];
+	
+	FILE *dumpfile = NULL;
+	
+	if (argc >= 3)
+		dumpfile = fopen(argv[2], "a");
 	
 	struct parser parser;
 	parser_init(&parser);
@@ -172,6 +177,8 @@ int main (int argc, char **argv)
 		if (status == 1) {
 			uint16_t crc = crc_telegram(buf_telegram, len);
 			logmsg(LL_VERBOSE, "Parsing successful, data CRC 0x%x, telegram CRC 0x%x\n", crc, parser.crc16);
+		} else if (dumpfile) {
+			fwrite(buf_telegram, 1, len, dumpfile);
 		}
 	}
 	
@@ -180,6 +187,8 @@ int main (int argc, char **argv)
 	}
 	
 	close(fd);
-
+	
+	if (dumpfile)
+		fclose(dumpfile);
 }
 
