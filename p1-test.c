@@ -150,7 +150,7 @@ int main (int argc, char **argv)
 		
 		memset(&newtio, 0, sizeof(struct termios));		/* Clear the new terminal data structure */
 	
-		newtio.c_cflag = B19200 | CS8 | CLOCAL | CREAD;		// Start at 19200 baud, 8-bit characters, ignore control lines, enable reading
+		newtio.c_cflag = B115200 | CS8 | CLOCAL | CREAD;		// Start at 115200 baud, 8-bit characters, ignore control lines, enable reading
 		newtio.c_iflag = 0;
 		newtio.c_oflag = 0;	
 		newtio.c_lflag = 0;								// Set input mode (non-canonical, no echo, etc.)
