@@ -86,7 +86,7 @@ size_t read_telegram (int fd, uint8_t *buf, size_t bufsize, size_t maxfailbytes)
 							// Possible start of CRC, try reading 4 more bytes
 							offset += len;
 							len = read(fd, buf + offset, 4);
-							if (buf[offset + 2] == '\r') {
+							if (len == 4 && buf[offset + 2] == '\r') {
 								// New style telegram with CRC
 								logmsg(LL_VERBOSE, "New-style telegram with length %lu\n", offset + len);
 								return offset + len;
