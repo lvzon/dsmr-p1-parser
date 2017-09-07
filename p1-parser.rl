@@ -79,26 +79,26 @@ long long int TST_to_time (struct parser *fsm, int arg_idx) {
 	action equipment_id { logmsg(LL_VERBOSE, "Equipment ID: %s\n", fsm->strarg[0]);}
 	action tariff { logmsg(LL_VERBOSE, "Tariff: %lld\n", fsm->arg[0]);}
 	action switchpos { logmsg(LL_VERBOSE, "Switch position: %lld\n", fsm->arg[0]);}	
-	action E_in_t1 { logmsg(LL_VERBOSE, "Energy in, tariff 1: %lld.%lld %s\n", fsm->arg[0], fsm->arg[1], fsm->strarg[0]); }
-	action E_in_t2 { logmsg(LL_VERBOSE, "Energy in, tariff 2: %lld.%lld %s\n", fsm->arg[0], fsm->arg[1], fsm->strarg[0]); }
-	action E_out_t1 { logmsg(LL_VERBOSE, "Energy out, tariff 1: %lld.%lld %s\n", fsm->arg[0], fsm->arg[1], fsm->strarg[0]); }
-	action E_out_t2 { logmsg(LL_VERBOSE, "Energy out, tariff 2: %lld.%lld %s\n", fsm->arg[0], fsm->arg[1], fsm->strarg[0]); }
-	action P_in { logmsg(LL_VERBOSE, "Power in: %lld.%lld %s\n", fsm->arg[0], fsm->arg[1], fsm->strarg[0]); }
-	action P_out { logmsg(LL_VERBOSE, "Power out: %lld.%lld %s\n", fsm->arg[0], fsm->arg[1], fsm->strarg[0]); }
-	action P_threshold { logmsg(LL_VERBOSE, "Power threshold: %lld.%lld %s\n", fsm->arg[0], fsm->arg[1], fsm->strarg[0]); }
+	action E_in_t1 { logmsg(LL_VERBOSE, "Energy in, tariff 1: %f %s\n", (double)fsm->arg[0] / (double)fsm->arg[1], fsm->strarg[0]); }
+	action E_in_t2 { logmsg(LL_VERBOSE, "Energy in, tariff 2: %f %s\n", (double)fsm->arg[0] / (double)fsm->arg[1], fsm->strarg[0]); }
+	action E_out_t1 { logmsg(LL_VERBOSE, "Energy out, tariff 1: %f %s\n", (double)fsm->arg[0] / (double)fsm->arg[1], fsm->strarg[0]); }
+	action E_out_t2 { logmsg(LL_VERBOSE, "Energy out, tariff 2: %f %s\n", (double)fsm->arg[0] / (double)fsm->arg[1], fsm->strarg[0]); }
+	action P_in { logmsg(LL_VERBOSE, "Power in: %f %s\n", (double)fsm->arg[0] / (double)fsm->arg[1], fsm->strarg[0]); }
+	action P_out { logmsg(LL_VERBOSE, "Power out: %f %s\n", (double)fsm->arg[0] / (double)fsm->arg[1], fsm->strarg[0]); }
+	action P_threshold { logmsg(LL_VERBOSE, "Power threshold: %f %s\n", (double)fsm->arg[0] / (double)fsm->arg[1], fsm->strarg[0]); }
 	action I_L1 { logmsg(LL_VERBOSE, "Current L1: %lld %s\n", fsm->arg[0], fsm->strarg[0]); }
 	action I_L2 { logmsg(LL_VERBOSE, "Current L2: %lld %s\n", fsm->arg[0], fsm->strarg[0]); }
 	action I_L3 { logmsg(LL_VERBOSE, "Current L3: %lld %s\n", fsm->arg[0], fsm->strarg[0]); }
 	action I_threshold { logmsg(LL_VERBOSE, "Current threshold: %lld %s\n", fsm->arg[0], fsm->strarg[0]); }
-	action V_L1 { logmsg(LL_VERBOSE, "Voltage L1: %lld.%lld %s\n", fsm->arg[0], fsm->arg[1], fsm->strarg[0]); }
-	action V_L2 { logmsg(LL_VERBOSE, "Voltage L2: %lld.%lld %s\n", fsm->arg[0], fsm->arg[1], fsm->strarg[0]); }
-	action V_L3 { logmsg(LL_VERBOSE, "Voltage L3: %lld.%lld %s\n", fsm->arg[0], fsm->arg[1], fsm->strarg[0]); }
-	action P_in_L1 { logmsg(LL_VERBOSE, "Power in L1: %lld.%lld %s\n", fsm->arg[0], fsm->arg[1], fsm->strarg[0]); }
-	action P_in_L2 { logmsg(LL_VERBOSE, "Power in L2: %lld.%lld %s\n", fsm->arg[0], fsm->arg[1], fsm->strarg[0]); }
-	action P_in_L3 { logmsg(LL_VERBOSE, "Power in L3: %lld.%lld %s\n", fsm->arg[0], fsm->arg[1], fsm->strarg[0]); }
-	action P_out_L1 { logmsg(LL_VERBOSE, "Power out L1: %lld.%lld %s\n", fsm->arg[0], fsm->arg[1], fsm->strarg[0]); }
-	action P_out_L2 { logmsg(LL_VERBOSE, "Power out L2: %lld.%lld %s\n", fsm->arg[0], fsm->arg[1], fsm->strarg[0]); }
-	action P_out_L3 { logmsg(LL_VERBOSE, "Power out L3: %lld.%lld %s\n", fsm->arg[0], fsm->arg[1], fsm->strarg[0]); }	
+	action V_L1 { logmsg(LL_VERBOSE, "Voltage L1: %f %s\n", (double)fsm->arg[0] / (double)fsm->arg[1], fsm->strarg[0]); }
+	action V_L2 { logmsg(LL_VERBOSE, "Voltage L2: %f %s\n", (double)fsm->arg[0] / (double)fsm->arg[1], fsm->strarg[0]); }
+	action V_L3 { logmsg(LL_VERBOSE, "Voltage L3: %f %s\n", (double)fsm->arg[0] / (double)fsm->arg[1], fsm->strarg[0]); }
+	action P_in_L1 { logmsg(LL_VERBOSE, "Power in L1: %f %s\n", (double)fsm->arg[0] / (double)fsm->arg[1], fsm->strarg[0]); }
+	action P_in_L2 { logmsg(LL_VERBOSE, "Power in L2: %f %s\n", (double)fsm->arg[0] / (double)fsm->arg[1], fsm->strarg[0]); }
+	action P_in_L3 { logmsg(LL_VERBOSE, "Power in L3: %f %s\n", (double)fsm->arg[0] / (double)fsm->arg[1], fsm->strarg[0]); }
+	action P_out_L1 { logmsg(LL_VERBOSE, "Power out L1: %f %s\n", (double)fsm->arg[0] / (double)fsm->arg[1], fsm->strarg[0]); }
+	action P_out_L2 { logmsg(LL_VERBOSE, "Power out L2: %f %s\n", (double)fsm->arg[0] / (double)fsm->arg[1], fsm->strarg[0]); }
+	action P_out_L3 { logmsg(LL_VERBOSE, "Power out L3: %f %s\n", (double)fsm->arg[0] / (double)fsm->arg[1], fsm->strarg[0]); }	
 	action pfail { logmsg(LL_VERBOSE, "Power failures: %lld\n", fsm->arg[0]);}
 	action longpfail { logmsg(LL_VERBOSE, "Long power failures: %lld\n", fsm->arg[0]);}
 	action pfailevent { logmsg(LL_VERBOSE, "Power failure event at %lld, %lld %s\n", TST_to_time(fsm, 0), fsm->arg[7], fsm->strarg[0]);}
@@ -113,14 +113,14 @@ long long int TST_to_time (struct parser *fsm, int arg_idx) {
 	action textmsg { logmsg(LL_VERBOSE, "Text message: %s\n", fsm->strarg[0]); }
 	action dev_type { logmsg(LL_VERBOSE, "Device %lld type: %lld\n", fsm->arg[0], fsm->arg[1]);}
 	action dev_id { logmsg(LL_VERBOSE, "Device %lld ID: %s\n", fsm->arg[0], fsm->strarg[0]);}
-	action dev_counter { logmsg(LL_VERBOSE, "Device %lld counter: %lld.%lld %s\n", fsm->arg[0], fsm->arg[1], fsm->arg[2], fsm->strarg[0]); }
+	action dev_counter { logmsg(LL_VERBOSE, "Device %lld counter at %lld: %f %s\n", fsm->arg[0], TST_to_time(fsm, 1), (double)fsm->arg[8] / (double)fsm->arg[9], fsm->strarg[0]); }
 	action dev_valve { logmsg(LL_VERBOSE, "Device %lld valve position: %lld\n", fsm->arg[0], fsm->arg[1]);}	
 	action dev_timeseries_head { logmsg(LL_VERBOSE, "Device %lld timeseries, starting time %lld, status %lld, period %lld, values %lld:\n", fsm->arg[0], TST_to_time(fsm, 1), fsm->arg[7], fsm->arg[8], fsm->arg[9]); }
 	action dev_timeseries_counter_head { logmsg(LL_VERBOSE, "counter values, unit %s\n", fsm->strarg[0]); } 
 	action dev_timeseries_counter_cold_head { logmsg(LL_VERBOSE, "cold counter values, unit %s\n", fsm->strarg[0]); } 
-	action dev_timeseries_counterval { logmsg(LL_VERBOSE, "counter value: %lld.%lld\n", fsm->arg[0], fsm->arg[1]); }
+	action dev_timeseries_counterval { logmsg(LL_VERBOSE, "counter value: %f\n", (double)fsm->arg[0] / (double)fsm->arg[1]); }
 	action gas_id_old { logmsg(LL_VERBOSE, "Gas meter ID: %s\n", fsm->strarg[0]);}
-	action gas_count_old { logmsg(LL_VERBOSE, "Gas meter counter: %lld.%lld %s\n", fsm->arg[0], fsm->arg[1], fsm->strarg[0]); }
+	action gas_count_old { logmsg(LL_VERBOSE, "Gas meter counter: %f %s\n", (double)fsm->arg[0] / (double)fsm->arg[1], fsm->strarg[0]); }
 	action gas_valve_old { logmsg(LL_VERBOSE, "Gas meter valve position: %lld\n", fsm->arg[0]);}	
 	action error {logmsg(LL_VERBOSE, "Error while parsing\n");fhold ; fgoto rest_of_line; } 
 	
@@ -140,7 +140,8 @@ long long int TST_to_time (struct parser *fsm, int arg_idx) {
 	crlf = '\r\n';	# Lines are terminated by carriage return + line feed
 	#crlf = [\r\n]{2};	# Lines are terminated by carriage return + line feed, but we'll also match some converted line ends
 	
-	fixedpoint = integer '.' uinteger;			# Fixed point value, stored as two integers
+	fixedpoint = fpval;			# Fixed point value, stored as an integer value and an integer divider 
+	
 	TST = digitpair{6} dst;
 	TST_old = digitpair{6};
 	unit = '*' ([^)]+ >addstr $str_append %str_term);
@@ -152,8 +153,7 @@ long long int TST_to_time (struct parser *fsm, int arg_idx) {
 	idstr = hexstring;
 	
 	header = '/' headerstr crlf crlf @header @clearargs;	
-	end_crc = '!' hexint crlf @crc @clearargs;		# Telegram end with CRC
-	end = '!' crlf @crc @clearargs;				# Telegram end without CRC
+	end = '!' hexint? crlf @crc @clearargs;		# Telegram end with optional CRC
 	
 	fixedpointval = '(' fixedpoint unit ')';
 	tstval = '(' TST ')';
@@ -256,7 +256,7 @@ long long int TST_to_time (struct parser *fsm, int arg_idx) {
 	
 	line = object $err(error) @clearargs;	# Clear argument stacks at the end of each line, handle parsing errors
 	
-	telegram = header? line* (end_crc | end);	# Make header optional, so we can recover from errors in the middle of a telegram
+	telegram = header? line* end;	# Make header optional, so we can recover from errors in the middle of a telegram
 	
 	main := telegram* $err(error);		# Parse zero or more telegrams
 	

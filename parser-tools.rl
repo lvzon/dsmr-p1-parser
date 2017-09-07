@@ -6,7 +6,6 @@
    	  (c)2015-2017, Levien van Zon (levien at zonnetjes.net, https://github.com/lvzon)			
 */
 
-
 %%{
 	machine parser;
 	access fsm->;
@@ -37,6 +36,29 @@
 		fsm->multiplier = 1;
 	}
 	
+	# Add a new non-integer arguments to the stack, as integer value and divider
+	action addfparg { 
+		
+		// Add integer value
+		fsm->arg[fsm->argc] *= fsm->multiplier;
+		if ( fsm->argc < PARSER_MAXARGS )
+			fsm->argc++;
+		fsm->multiplier = 1;
+		
+		// Add divider, calculated as 10^decimalpos, the decimal position from the end
+		//printf("Decimal position: %d\n", fsm->decimalpos);
+		if (fsm->decimalpos >= 0 && fsm->decimalpos <= MAX_DIVIDER_EXP)
+			fsm->arg[fsm->argc] = pow10[fsm->decimalpos];
+		else if (fsm->decimalpos == -1)
+			fsm->arg[fsm->argc] = 1;
+		else
+			fsm->arg[fsm->argc] = 0;
+		
+		if ( fsm->argc < PARSER_MAXARGS )
+			fsm->argc++;
+		fsm->decimalpos = -1;
+	}
+	
 	# Push a string onto the string argument stack
 	action addstr {
 		if ( fsm->strargc < PARSER_MAXARGS )
@@ -54,6 +76,7 @@
 	action cleararg { 
 		fsm->arg[fsm->argc] = 0;
 		fsm->bitcount = 0;
+		fsm->decimalpos = -1;
 	}
 	
 	# Set all arguments to zero
@@ -66,6 +89,7 @@
 		fsm->multiplier = 1;
 		fsm->argc = 0;
 		fsm->bitcount = 0;
+		fsm->decimalpos = -1;
 		
 		for (arg = 0 ; arg < fsm->strargc ; arg++) {
 			fsm->strarg[arg] = NULL;
@@ -98,7 +122,25 @@
 	action add_digit { 
 		fsm->arg[fsm->argc] = fsm->arg[fsm->argc] * 10 + (fc - '0');
 	}
+	
+	# Add a decimal digit to the current argument, and track the decimal point position
+	
+	action add_fpdigit { 
+	
+		if (fc == '.') {
+				fsm->decimalpos = 0;
+		} else {
 		
+			fsm->arg[fsm->argc] = fsm->arg[fsm->argc] * 10 + (fc - '0');
+			
+			if (fsm->decimalpos >= 0) {
+				// Everytime we see a digit after the decimal point, increase counter
+				fsm->decimalpos += 1;
+			}
+
+		}
+	}
+	
 	# Add a hexadecimal digit to the current argument
 	action add_hexdigit { 
 		
@@ -185,6 +227,7 @@
 	string = ^[\0\n;]+ >addstr $str_append %str_term;
 	integer = ( ('-' @negate) | '+' )? ( digit @add_digit )+ >cleararg %addarg;	# Parse and store signed integer argument
 	uinteger = ( digit @add_digit )+ >cleararg %addarg;				# Parse and store unsigned integer arument
+	fpval = ( ('-' @negate) | '+' )? ( [1234567890.] @add_fpdigit )+ >cleararg %addfparg;	# Parse and store non-integer numeric argument
 	hexint = '0x'? ( xdigit @add_hexdigit )+ >cleararg %addarg;		# Parse and store unsigned hexadecimal integer argument
 	bitmask = ( '0b'? '0'@addbit0_low | '1'@addbit1_low )+ >cleararg %addarg;		# Parse and store binary argument (MSB first)
 	reversebitmask = ( '0'@addbit0_high | '1'@addbit1_high )+ >cleararg %addarg;		# Parse and store reversed bitstring argument (LSB first)

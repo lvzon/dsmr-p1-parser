@@ -6,6 +6,8 @@
    	  (c)2017, Levien van Zon (levien at zonnetjes.net, https://github.com/lvzon)
 */
 
+#define _GNU_SOURCE 1
+
 #include <inttypes.h>
 
 // Default meter timezone is CET (The Netherlands and most of mainland Western Europe)
@@ -37,6 +39,7 @@ struct parser
 	long long arg[PARSER_MAXARGS];
 	int multiplier;
 	int bitcount;
+	int decimalpos;
 
 	int strargc;						// String capture stack
 	char *strarg[PARSER_MAXARGS];
@@ -46,6 +49,16 @@ struct parser
 	uint16_t	crc16;
 	char		*meter_timezone;	
 };
+
+// Lookup table for long long integer powers of ten
+
+# define MAX_DIVIDER_EXP 18
+
+static const long long pow10[MAX_DIVIDER_EXP + 1] = {
+        1, 10, 100, 1000, 10000, 100000L, 1000000L, 10000000L, 100000000L, 1000000000L,
+        10000000000LL, 100000000000LL, 1000000000000LL, 10000000000000LL, 100000000000000LL, 
+        1000000000000000LL, 10000000000000000LL, 100000000000000000LL, 1000000000000000000LL};
+
 
 // Function prototypes
 
