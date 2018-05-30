@@ -92,7 +92,9 @@ CRC: 0x9b8d
 Parsing successful, data CRC 0x9b8d, telegram CRC 0x9b8d
 ```
 
-If you get an error, check if the serial converter is connected and you're using the the correct serial device (depending on yoyur setup it can also be `/dev/ttyS0`, `/dev/ttyUSB1` or something else, check `dmesg` to be sure). If no valid telegram is seen within 25 seconds or so, hit `CTRL-C` and check `errors.dat`. If `errors.dat` contains garbage, you probably need to invert the signal, using an inverter-IC, a transistor or a software setting. If `errors.dat` is empty, try dumping the serial device data directly (e.g. `cat /dev/ttyUSB1`). If no data comes in, check your cable connections and especially check if your data-line and ground and pull-up resistor are all connected correctly and the request-pin 2 is connected to at least +4V (and at most 5.5V). If the cable-length is more than a few metres, this can cause the voltages to drop below 4 V, so you may need to measure this and either use a better cable or connect the pull-up resistor and Vcc-RTS at the P1-side rather than at the serial interface. Also note that older (DSMR 2.x or 3.x) metres do not have a 5V Vcc pin, so in this case you'll need to supply 5V from another source.
+If you get an error, check if the serial converter is connected and you're using the the correct serial device (depending on yoyur setup it can also be `/dev/ttyAMA0`, `/dev/ttyS0`, `/dev/ttyUSB1` or something else, check `dmesg` to be sure). If no valid telegram is seen within 25 seconds or so, hit `CTRL-C` and check `errors.dat`. If `errors.dat` contains garbage, you probably need to invert the signal, using an inverter-IC, a [transistor](https://gathering.tweakers.net/forum/list_message/42560767#42560767) or a software setting. If `errors.dat` is empty, try dumping the serial device data directly (e.g. `cat /dev/ttyUSB1`). If no data comes in, check your cable connections and especially check if your data-line and ground and pull-up resistor are all connected correctly and the request-pin 2 is connected to at least +4V (and at most 5.5V). 
+
+If the cable-length is more than a few metres, this can cause the voltages to drop below 4 V, so you may need to measure this and either use a better cable or connect the pull-up resistor and Vcc-RTS at the P1-side rather than at the serial interface. Also note that older (DSMR 2.x or 3.x) metres do not have a 5V Vcc pin, so in this case you'll need to supply 5V from another source.
 
 
 ## TODO
@@ -104,7 +106,7 @@ If you get an error, check if the serial converter is connected and you're using
    
 ## Other resources
 
-I wrote this parser for use at [LENS](http://lens-energie.nl/), because there currently does not seem to be another full DSMR P1 telegram-parser that is open-source and can be used in regular C programs. However, there are parsers in many other programming languages:
+I wrote this parser for use at [LENS](http://lens-energie.nl/), because I needed something that was light-weight and complete, and there currently does not seem to be another full DSMR P1 telegram-parser that is open-source and can be used in regular C programs. However, there are many parsers in many other programming languages:
 
    - Matthijs Kooijman's [DSMR P1-parser for Arduino](https://github.com/matthijskooijman/arduino-dsmr), written in C++. 
    - [Go library for reading/parsing P1-data](https://github.com/mhe/dsmr4p1)
@@ -114,13 +116,18 @@ I wrote this parser for use at [LENS](http://lens-energie.nl/), because there cu
    - [DSMR P1 parser in Python](https://github.com/ndokter/dsmr_parser).
    - [Python module to read/parse P1-data](https://github.com/bwesterb/dsmrp1)
    - Another [very basic DSMR P1-reader/parser in Python](https://github.com/jvhaarst/DSMR-P1-telegram-reader)
-   - Dennis Mensema's extensive [DSMR reader software and GUI in Python](https://github.com/dennissiemensma/dsmr-reader)
+   - Dennis Siemensma's extensive [DSMR reader software and GUI in Python](https://github.com/dennissiemensma/dsmr-reader)
    - Arne Kaas' [P1 data logger, using Python and SQLite](https://github.com/arnekaas/DSMR-P1-usb-logger)
    - Another [Python P1 data logger](https://github.com/dschutterop/dsmr)
-   
-For more information on the P1-port (in Dutch):
-
-   - <http://domoticx.com/p1-poort-slimme-meter-hardware/>
-   - <http://domoticx.com/arduino-p1-poort-telegrammen-uitlezen/>
    - And yet another [P1 data logger using Python and MySQL](https://github.com/micromys/DSMR)
    - A [DSMR 4.2 P1-reader using PHP and MySQL](https://github.com/arnocs/dsmrp1spot)
+
+
+For more information on interfacing with the P1-port (mostly in Dutch):
+
+   - <http://domoticx.com/p1-poort-slimme-meter-uitlezen-hardware/>
+   - <http://domoticx.com/p1-poort-slimme-meter-hardware/>
+   - <http://domoticx.com/arduino-p1-poort-telegrammen-uitlezen/>
+   - <https://jeelabs.org/article/1621a/>
+   - <https://thinkpad.tweakblogs.net/blog/10673/uitlezen-van-de-slimme-meter-p1-poort-met-een-arduino-en-waarden-opslaan-in-mysql-database>
+   
