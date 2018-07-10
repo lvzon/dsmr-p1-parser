@@ -2,9 +2,9 @@
    File: p1-parser.rl
 
    	  Ragel state-machine definition and supporting functions
-   	  to parse Dutch Smart Meter P1-telegrams.
+   	  to parse Dutch Smart Meter P1-telegrams (and a subset of generic IEC 62056-21 smart meter telegrams).
    	  
-   	  (c)2017, Levien van Zon (levien at zonnetjes.net, https://github.com/lvzon)
+   	  (c)2017-2018, Levien van Zon (levien at zonnetjes.net, https://github.com/lvzon)
 */
 
 #include <stdlib.h>
@@ -144,8 +144,10 @@ long long int TST_to_time (struct parser *fsm, int arg_idx) {
 	
 	TST = digitpair{6} dst;
 	TST_old = digitpair{6};
-	unit = '*' ([^)]+ >addstr $str_append %str_term);
+	unit = [* ] ([^)]+ >addstr $str_append %str_term);	# Formally only '*' is a valid unit separator, but some meters use a space (and thus put the unit in the value string)
 	timeseries_unit = [^)]+ >addstr $str_append %str_term;
+	
+	billing_period = ('*' digit+)?;		# The billing period specifier is part of IEC 62056-21, but currently isn't present in DSMR telegrams, so we make it optional
 	
 	headerstr = ([^\r^\n]+ >addstr $str_append %str_term);
 	#msgstr = ([^)]* >addstr $str_append %str_term);
@@ -155,21 +157,22 @@ long long int TST_to_time (struct parser *fsm, int arg_idx) {
 	header = '/' headerstr crlf crlf @header @clearargs;	
 	end = '!' hexint? crlf @crc @clearargs;		# Telegram end with optional CRC
 	
-	fixedpointval = '(' fixedpoint unit ')';
+	fixedpointval = '(' fixedpoint unit ')';	# The value can be either integer or non-integer
 	tstval = '(' TST ')';
 	tstval_old = '(' TST_old ')';
 	
-	# DSMR COSEM-objects
+	# COSEM-objects supported by DSMR
 	
 	P1_version = '1-3:0.2.8(' hexint ')' crlf @P1_version;		# P1 version
 	timestamp = '0-0:1.0.0' tstval crlf @timestamp;			# Telegram timestamp
 	
-	equipment_id = '0-0:96.1.1(' idstr ')' crlf @equipment_id;	# Equipment ID
+	equipment_id_p1 = '0-0:96.1.1' billing_period '(' idstr ')' crlf @equipment_id;	# Equipment ID in P1-meters
+	equipment_id_iec = digit '-0:0.0.0' billing_period '(' uinteger ')' crlf @equipment_id;	# Equipment ID in IEC 62056-21 meters
 	
-	E_in_t1 = '1-0:1.8.1' fixedpointval crlf @E_in_t1;	# Electricity delivered to client in tariff 1
-	E_in_t2 = '1-0:1.8.2' fixedpointval crlf @E_in_t2;	# Electricity delivered to client in tariff 2
-	E_out_t1 = '1-0:2.8.1' fixedpointval crlf @E_out_t1;	# Electricity delivered by client in tariff 1
-	E_out_t2 = '1-0:2.8.2' fixedpointval crlf @E_out_t2;	# Electricity delivered by client in tariff 2
+	E_in_t1 = '1-0:1.8.1' billing_period fixedpointval crlf @E_in_t1;	# Electricity delivered to client in tariff 1
+	E_in_t2 = '1-0:1.8.2' billing_period fixedpointval crlf @E_in_t2;	# Electricity delivered to client in tariff 2
+	E_out_t1 = '1-0:2.8.1' billing_period fixedpointval crlf @E_out_t1;	# Electricity delivered by client in tariff 1
+	E_out_t2 = '1-0:2.8.2' billing_period fixedpointval crlf @E_out_t2;	# Electricity delivered by client in tariff 2
 	tariff = '0-0:96.14.0(' uinteger ')' crlf @tariff;		# TODO: can be non-integer, in theory?
 	switchpos = '0-0:' ('96.3.10' | '24.4.0') '(' uinteger ')' crlf @switchpos;	# Switch position electricity (in/out/enabled), absent from DSMR>=4.0.7
 
@@ -241,6 +244,7 @@ long long int TST_to_time (struct parser *fsm, int arg_idx) {
 	
 	# P1 Telegram components
 	
+	equipment_id = equipment_id_p1 | equipment_id_iec;
 	metadata_object = P1_version | timestamp;
 	emeter_object = equipment_id | tariff | switchpos | E_in_t1 | E_in_t2 | E_out_t1 | E_out_t2;
 	power_object = P_in | P_out | P_in_L1 | P_out_L1 | P_in_L2 | P_out_L2 | P_in_L3 | P_out_L3 | P_threshold;
