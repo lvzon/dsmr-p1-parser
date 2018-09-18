@@ -72,17 +72,71 @@ long long int TST_to_time (struct parser *fsm, int arg_idx) {
 		
 	# Actions associated with commands
 	
-	action header { logmsg(LL_VERBOSE, "Header: %s\n", fsm->strarg[0]); }
-	action crc { logmsg(LL_VERBOSE, "CRC: 0x%x\n", (unsigned int)fsm->arg[0]); fsm->crc16 = fsm->arg[0]; }
-	action P1_version { logmsg(LL_VERBOSE, "P1 version: %lld.%lld\n", fsm->arg[0] >> 4, fsm->arg[0] & 0xf); }
-	action timestamp { logmsg(LL_VERBOSE, "Timestamp: %lld\n", TST_to_time(fsm, 0));}
-	action equipment_id { logmsg(LL_VERBOSE, "Equipment ID: %s\n", fsm->strarg[0]);}
-	action tariff { logmsg(LL_VERBOSE, "Tariff: %lld\n", fsm->arg[0]);}
-	action switchpos { logmsg(LL_VERBOSE, "Switch position: %lld\n", fsm->arg[0]);}	
+	action header { 
+		logmsg(LL_VERBOSE, "Header: %s\n", fsm->strarg[0]); 
+		strncpy((char *)(fsm->data.header), fsm->strarg[0], LEN_HEADER); 
+	}
+	
+	action crc { 
+		logmsg(LL_VERBOSE, "CRC: 0x%x\n", (unsigned int)fsm->arg[0]); 
+		fsm->crc16 = fsm->arg[0]; 
+	}
+	
+	action P1_version { 
+		fsm->data.P1_version_major = fsm->arg[0] >> 4;
+		fsm->data.P1_version_minor = fsm->arg[0] & 0xf;
+		logmsg(LL_VERBOSE, "P1 version: %d.%d\n", (int)(fsm->data.P1_version_major), (int)(fsm->data.P1_version_minor)); 
+	}
+	
+	action timestamp {
+		fsm->data.timestamp = TST_to_time(fsm, 0);
+		logmsg(LL_VERBOSE, "Timestamp: %lu\n", (unsigned long)(fsm->data.timestamp));
+	}
+	
+	action equipment_id { 
+		logmsg(LL_VERBOSE, "Equipment ID: %s\n", fsm->strarg[0]);
+		strncpy((char *)(fsm->data.equipment_id), fsm->strarg[0], LEN_EQUIPMENT_ID); 
+	}
+	
+	action tariff { 
+		fsm->data.tariff = fsm->arg[0];
+		logmsg(LL_VERBOSE, "Tariff: %u\n", (unsigned int)(fsm->data.tariff));
+	}
+	
+	action switchpos { 
+		fsm->data.switchpos = fsm->arg[0];
+		logmsg(LL_VERBOSE, "Switch position: %d\n", (int)(fsm->data.switchpos));
+	}	
+	
+	action E_in {
+		unsigned int tariff = fsm->arg[0];
+		double value = (double)fsm->arg[1] / (double)fsm->arg[2];
+		if (tariff > MAX_TARIFFS) {
+			logmsg(LL_ERROR, "Tariff %u out of range, max. %u, E_in %f %s\n", tariff, MAX_TARIFFS, value, fsm->strarg[0]);
+		} else {
+			fsm->data.E_in[tariff] = value;
+			strncpy((char *)(fsm->unit_E_in[tariff]), fsm->strarg[0], LEN_UNIT + 1);
+			logmsg(LL_VERBOSE, "Energy in, tariff %u: %f %s\n", value, fsm->strarg[0]); 
+		}
+	}
+	
+	action E_out {
+		unsigned int tariff = fsm->arg[0];
+		double value = (double)fsm->arg[1] / (double)fsm->arg[2];
+		if (tariff > MAX_TARIFFS) {
+			logmsg(LL_ERROR, "Tariff %u out of range, max. %u, E_out %f %s\n", tariff, MAX_TARIFFS, value, fsm->strarg[0]);
+		} else {
+			fsm->data.E_out[tariff] = value;
+			strncpy((char *)(fsm->unit_E_out[tariff]), fsm->strarg[0], LEN_UNIT + 1);
+			logmsg(LL_VERBOSE, "Energy out, tariff %u: %f %s\n", value, fsm->strarg[0]); 
+		}
+	}
+	
 	action E_in_t1 { logmsg(LL_VERBOSE, "Energy in, tariff 1: %f %s\n", (double)fsm->arg[0] / (double)fsm->arg[1], fsm->strarg[0]); }
 	action E_in_t2 { logmsg(LL_VERBOSE, "Energy in, tariff 2: %f %s\n", (double)fsm->arg[0] / (double)fsm->arg[1], fsm->strarg[0]); }
 	action E_out_t1 { logmsg(LL_VERBOSE, "Energy out, tariff 1: %f %s\n", (double)fsm->arg[0] / (double)fsm->arg[1], fsm->strarg[0]); }
 	action E_out_t2 { logmsg(LL_VERBOSE, "Energy out, tariff 2: %f %s\n", (double)fsm->arg[0] / (double)fsm->arg[1], fsm->strarg[0]); }
+	
 	action P_in { logmsg(LL_VERBOSE, "Power in: %f %s\n", (double)fsm->arg[0] / (double)fsm->arg[1], fsm->strarg[0]); }
 	action P_out { logmsg(LL_VERBOSE, "Power out: %f %s\n", (double)fsm->arg[0] / (double)fsm->arg[1], fsm->strarg[0]); }
 	action P_threshold { logmsg(LL_VERBOSE, "Power threshold: %f %s\n", (double)fsm->arg[0] / (double)fsm->arg[1], fsm->strarg[0]); }
@@ -144,7 +198,7 @@ long long int TST_to_time (struct parser *fsm, int arg_idx) {
 	
 	TST = digitpair{6} dst;
 	TST_old = digitpair{6};
-	unit = '*' ([^)]+ >addstr $str_append %str_term);
+	unit = [* ] ([^)]+ >addstr $str_append %str_term);		# Unit separator is '*', but some meters use ' '
 	timeseries_unit = [^)]+ >addstr $str_append %str_term;
 	
 	headerstr = ([^\r^\n]+ >addstr $str_append %str_term);
@@ -166,10 +220,16 @@ long long int TST_to_time (struct parser *fsm, int arg_idx) {
 	
 	equipment_id = '0-0:96.1.1(' idstr ')' crlf @equipment_id;	# Equipment ID
 	
+	E_in = '1-0:1.8.' uinteger fixedpointval crlf @E_in;	# Electricity delivered to client
+	E_out = '1-0:2.8.' uinteger fixedpointval crlf @E_out;	# Electricity delivered by client
+	
+	# 1-0:1.8.0*255(0091158 kWh)
+	
 	E_in_t1 = '1-0:1.8.1' fixedpointval crlf @E_in_t1;	# Electricity delivered to client in tariff 1
 	E_in_t2 = '1-0:1.8.2' fixedpointval crlf @E_in_t2;	# Electricity delivered to client in tariff 2
 	E_out_t1 = '1-0:2.8.1' fixedpointval crlf @E_out_t1;	# Electricity delivered by client in tariff 1
 	E_out_t2 = '1-0:2.8.2' fixedpointval crlf @E_out_t2;	# Electricity delivered by client in tariff 2
+
 	tariff = '0-0:96.14.0(' uinteger ')' crlf @tariff;		# TODO: can be non-integer, in theory?
 	switchpos = '0-0:' ('96.3.10' | '24.4.0') '(' uinteger ')' crlf @switchpos;	# Switch position electricity (in/out/enabled), absent from DSMR>=4.0.7
 
