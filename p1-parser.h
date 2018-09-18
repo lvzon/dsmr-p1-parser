@@ -10,6 +10,10 @@
 
 #include <inttypes.h>
 
+// Data structure to hold meter data
+
+#include "dsmr-data.h"
+
 // Default meter timezone is CET (The Netherlands and most of mainland Western Europe)
 
 #define METER_TIMEZONE	"CET-1CEST,M3.5.0/2,M10.5.0/3"
@@ -49,7 +53,12 @@ struct parser
 	uint16_t	crc16;
 	char		*meter_timezone;
 	int			parse_errors;
+	
+	// Data structure to hold meter data
+	
+	struct dsmr_data_struct	data;
 };
+
 
 // Lookup table for long long integer powers of ten
 
