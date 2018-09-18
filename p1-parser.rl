@@ -264,13 +264,24 @@ long long int TST_to_time (struct parser *fsm, int arg_idx) {
 	
 	action pfailevents { 
 		fsm->data.pfail_events = fsm->arg[0];
+		fsm->pfaileventcount = 0;
 		logmsg(LL_VERBOSE, "Power failure events: %u\n", (unsigned int)(fsm->data.pfail_events));
 	}
 	
-	# TODO: add counter, store events
-	action pfailevent { logmsg(LL_VERBOSE, "Power failure event at %lld, %lld %s\n", TST_to_time(fsm, 0), fsm->arg[7], fsm->strarg[0]);}
-	
-	
+	action pfailevent {
+		uint32_t timestamp = TST_to_time(fsm, 0);
+		uint32_t duration = fsm->arg[7];
+		logmsg(LL_VERBOSE, "Power failure event end time %lu, %lu %s\n", (unsigned long)timestamp, (unsigned long)duration, fsm->strarg[0]);
+		if (fsm->pfaileventcount < MAX_EVENTS) {
+			fsm->data.pfail_event_end_time[fsm->pfaileventcount] = timestamp;
+			fsm->data.pfail_event_duration[fsm->pfaileventcount] = duration;
+			strncpy((char *)(fsm->data.unit_pfail_event_duration[fsm->pfaileventcount]), fsm->strarg[0], LEN_UNIT + 1);
+		} else {
+			logmsg(LL_ERROR, "Power failure event overflow, count %d, max %d\n", fsm->pfaileventcount, MAX_EVENTS);
+		}
+		fsm->pfaileventcount++;
+	}
+		
 	action V_sags_L1 { 
 		if (MAX_PHASES >= 1) {
 			fsm->data.V_sags[0] = fsm->arg[0];

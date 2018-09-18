@@ -52,7 +52,7 @@ struct parser
 	
 	uint16_t	crc16;
 	char		*meter_timezone;
-	int			parse_errors;
+	int			parse_errors, pfaileventcount;
 	
 	// Data structure to hold meter data
 	
