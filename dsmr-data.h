@@ -33,14 +33,14 @@ struct dsmr_data_struct {
 	double		E_in[MAX_TARIFFS + 1], 
 				E_out[MAX_TARIFFS + 1], 
 				P_in_total, P_out_total, P_threshold,
-				I[MAX_PHASES], I_threshold,
+				I[MAX_PHASES],
 				V[MAX_PHASES], 
 				P_in[MAX_PHASES], P_out[MAX_PHASES];
 	
 	char	unit_E_in[MAX_TARIFFS + 1][LEN_UNIT + 1], unit_E_out[MAX_TARIFFS + 1][LEN_UNIT + 1], 
 			unit_P_in_total[LEN_UNIT + 1], unit_P_out_total[LEN_UNIT + 1], 
 			unit_P_threshold[LEN_UNIT + 1],
-			unit_I[MAX_PHASES][LEN_UNIT + 1], unit_I_threshold[LEN_UNIT + 1],
+			unit_I[MAX_PHASES][LEN_UNIT + 1],
 			unit_V[MAX_PHASES][LEN_UNIT + 1], 
 			unit_P_in[MAX_PHASES][LEN_UNIT + 1], unit_P_out[MAX_PHASES][LEN_UNIT + 1];
 		
