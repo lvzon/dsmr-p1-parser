@@ -55,7 +55,7 @@ size_t read_telegram (int fd, uint8_t *buf, size_t bufsize, size_t maxfailbytes)
 		if (len > 0) {
 			if (!telegram && byte == '/') {
 				// Possible start of telegram
-				logmsg(LL_VERBOSE, "Possible telegram found at offset %lu\n", offset);
+				logmsg(LL_VERBOSE, "Possible telegram found at offset %lu\n", (unsigned long)offset);
 				telegram = 1;
 				buf[offset++] = byte;
 			} else if (telegram && offset < bufsize) {
@@ -63,13 +63,13 @@ size_t read_telegram (int fd, uint8_t *buf, size_t bufsize, size_t maxfailbytes)
 				buf[offset++] = byte;
 				if (byte == '!') {
 					// Possible end of telegram, try to read either cr + lf or CRC value
-					logmsg(LL_VERBOSE, "Possible telegram end at offset %lu\n", offset);
+					logmsg(LL_VERBOSE, "Possible telegram end at offset %lu\n", (unsigned long)offset);
 					len = read(fd, buf + offset, 1);
 					len += read(fd, buf + offset + 1, 1);
 					if (len == 2) {
 						if (buf[offset] == '\r') {
 							// Old-style telegram without CRC
-							logmsg(LL_VERBOSE, "Old-style telegram with length %lu\n", offset + len);
+							logmsg(LL_VERBOSE, "Old-style telegram with length %lu\n", (unsigned long)offset + len);
 							return offset + len;
 						} else {
 							// Possible start of CRC, try reading 4 more bytes
@@ -80,7 +80,7 @@ size_t read_telegram (int fd, uint8_t *buf, size_t bufsize, size_t maxfailbytes)
 							len += read(fd, buf + offset + 3, 1);
 							if (len == 4 && buf[offset + 2] == '\r') {
 								// New style telegram with CRC
-								logmsg(LL_VERBOSE, "New-style telegram with length %lu\n", offset + len);
+								logmsg(LL_VERBOSE, "New-style telegram with length %lu\n", (unsigned long)offset + len);
 								return offset + len;
 							}							
 						}

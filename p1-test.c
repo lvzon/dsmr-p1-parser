@@ -34,5 +34,7 @@ int main (int argc, char **argv)
 	} while (parser.terminal);		// If we're connected to a serial device, keep reading, otherwise exit
 	
 	telegram_parser_close(&parser);
+	
+	return 0;
 }
 
