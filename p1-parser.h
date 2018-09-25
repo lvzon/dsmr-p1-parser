@@ -53,6 +53,9 @@ struct parser
 	uint16_t	crc16;
 	char		*meter_timezone;
 	int			parse_errors, pfaileventcount;
+
+	unsigned int devcount, timeseries_period_minutes;
+	uint32_t timeseries_time;
 	
 	// Data structure to hold meter data
 	

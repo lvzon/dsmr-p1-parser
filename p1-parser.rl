@@ -381,16 +381,77 @@ long long int TST_to_time (struct parser *fsm, int arg_idx) {
 	}
 	
 	
-	# TODO: See how we want to support this
-	action dev_timeseries_head { logmsg(LL_VERBOSE, "Device %lld timeseries, starting time %lld, status %lld, period %lld, values %lld:\n", fsm->arg[0], TST_to_time(fsm, 1), fsm->arg[7], fsm->arg[8], fsm->arg[9]); }
-	action dev_timeseries_counter_head { logmsg(LL_VERBOSE, "counter values, unit %s\n", fsm->strarg[0]); } 
-	action dev_timeseries_counter_cold_head { logmsg(LL_VERBOSE, "cold counter values, unit %s\n", fsm->strarg[0]); } 
-	action dev_timeseries_counterval { logmsg(LL_VERBOSE, "counter value: %f\n", (double)fsm->arg[0] / (double)fsm->arg[1]); }
+	# The dev_timeseries actions provide partial support for the 
+	# "profile generic dataset" used to store counter values of
+	# other devices in DSMR 3.x.
+	
+	action dev_timeseries_head { 
+		
+		unsigned int dev = fsm->arg[0];
+		uint32_t timestamp = TST_to_time(fsm, 1);
+		int status = fsm->arg[7];
+		unsigned int period = fsm->arg[8];	// Recording period in minutes
+		unsigned int values = fsm->arg[9];
+		logmsg(LL_VERBOSE, "Device %u timeseries, starting time %lu, status %d, period %u, values %u:\n", dev, (unsigned long)timestamp, status, period, values);
+		fsm->devcount = dev - 1;
+		fsm->timeseries_time = timestamp;
+		fsm->timeseries_period_minutes = period;
+	}
+	
+	action dev_timeseries_counter_head { 
+		unsigned int dev = fsm->devcount;
+		logmsg(LL_VERBOSE, "counter values, unit %s\n", fsm->strarg[0]);
+		if (dev < MAX_DEVS) {
+			strncpy((char *)(fsm->data.unit_dev_counter[dev]), fsm->strarg[0], LEN_UNIT + 1);
+		}
+	} 
 
-	# TODO: See how we want to support this
-	action gas_id_old { logmsg(LL_VERBOSE, "Gas meter ID: %s\n", fsm->strarg[0]);}
-	action gas_count_old { logmsg(LL_VERBOSE, "Gas meter counter: %f %s\n", (double)fsm->arg[0] / (double)fsm->arg[1], fsm->strarg[0]); }
-	action gas_valve_old { logmsg(LL_VERBOSE, "Gas meter valve position: %lld\n", fsm->arg[0]);}	
+	action dev_timeseries_counter_cold_head { 
+		unsigned int dev = fsm->devcount;
+		logmsg(LL_VERBOSE, "cold counter values, unit %s\n", fsm->strarg[0]);
+		if (dev < MAX_DEVS) {
+			strncpy((char *)(fsm->data.unit_dev_counter[dev]), fsm->strarg[0], LEN_UNIT + 1);
+		}
+	} 
+	
+	action dev_timeseries_counterval { 
+		
+		// Note that at this point we only store a single value of the timeseries, 
+		// which will end up being the most recent one...
+		
+		unsigned int dev = fsm->devcount;
+		double value = (double)fsm->arg[0] / (double)fsm->arg[1];
+		logmsg(LL_VERBOSE, "counter value: %f\n", value); 
+		if (dev < MAX_DEVS) {
+			fsm->data.dev_counter[dev] = value;
+			fsm->data.dev_counter_timestamp[dev] = fsm->timeseries_time;
+		}
+		fsm->timeseries_time += (fsm->timeseries_period_minutes * 60);
+	}
+	
+
+	# These actions support the old-style gas meter readings in DSMR 2.x
+	# We will use a fixed device ID for these...
+	
+	action gas_id_old { 
+		logmsg(LL_VERBOSE, "Gas meter ID: %s\n", fsm->strarg[0]);
+		fsm->data.dev_type[0] = 3;	// Gas meter
+		strncpy((char *)(fsm->data.dev_id[0]), fsm->strarg[0], LEN_EQUIPMENT_ID);
+	}
+	
+	action gas_count_old { 
+		unsigned int dev = 0;
+		double value = (double)fsm->arg[0] / (double)fsm->arg[1];
+		logmsg(LL_VERBOSE, "Gas meter counter: %f %s\n", value, fsm->strarg[0]); 
+		fsm->data.dev_counter[dev] = value;
+		fsm->data.dev_counter_timestamp[dev] = fsm->data.timestamp;
+		strncpy((char *)(fsm->data.unit_dev_counter[dev]), fsm->strarg[0], LEN_UNIT + 1);
+	}
+	
+	action gas_valve_old { 
+		fsm->data.dev_valve[0] = fsm->arg[0];
+		logmsg(LL_VERBOSE, "Gas meter valve position: %d\n", (int)(fsm->data.dev_valve[0]));
+	}	
 
 	action error {logmsg(LL_VERBOSE, "Error while parsing\n"); fsm->parse_errors++ ; fhold ; fgoto rest_of_line; } 
 	
