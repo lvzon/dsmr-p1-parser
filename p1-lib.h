@@ -33,7 +33,7 @@ typedef struct telegram_parser_struct {
 	
 	size_t bufsize;			// Telegram buffer size
 	size_t len;				// Telegram length
-	char *buffer;			// Telegram buffer pointer
+	uint8_t *buffer;		// Telegram buffer pointer
 	
 } telegram_parser;
 

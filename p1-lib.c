@@ -233,7 +233,7 @@ int telegram_parser_read (telegram_parser *obj)
 
 	if (obj->len) {
 		parser_init(&(obj->parser));
-		parser_execute(&(obj->parser), obj->buffer, obj->len, 1);
+		parser_execute(&(obj->parser), (const char *)(obj->buffer), obj->len, 1);
 		obj->status = parser_finish(&(obj->parser));	// 1 if final state reached, -1 on error, 0 if final state not reached
 		if (obj->status == 1) {
 			uint16_t crc = crc_telegram(obj->buffer, obj->len);

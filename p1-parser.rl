@@ -617,6 +617,7 @@ void parser_init( struct parser *fsm )
 	for (arg = 0 ; arg < PARSER_MAXARGS ; arg++)
 		fsm->strarg[arg] = NULL;
 	fsm->parse_errors = 0;
+	fsm->meter_timezone = NULL;
 	
 	%% write init;
 }
