@@ -4,9 +4,7 @@
 #include <sys/stat.h>
 #include <sys/ioctl.h>
 
-#include <stdlib.h>
 #include <fcntl.h>
-#include <termios.h>
 #include <unistd.h>
 #include <errno.h>
 #include <string.h>
@@ -16,7 +14,7 @@
 
 #include "crc16.h"
 
-#include "p1-parser.h"
+#include "p1-lib.h"
 
 
 uint16_t crc_telegram (const uint8_t *data, unsigned int length)
@@ -109,3 +107,164 @@ size_t read_telegram (int fd, uint8_t *buf, size_t bufsize, size_t maxfailbytes)
 }
 
 
+int telegram_parser_open (telegram_parser *obj, char *infile, size_t bufsize, int timeout, char *dumpfile)
+{
+	if (obj == NULL) {
+		return -1;
+	}
+	
+	parser_init(&(obj->parser));	// Initialise Ragel state machine
+	
+	obj->data = &(obj->parser.data);
+	obj->status = 0;
+	
+	obj->buffer = NULL;
+	obj->bufsize = 0;
+	obj->len = 0;
+	
+	obj->fd = -1;
+	obj->terminal = 0;
+	
+	if (timeout <= 0) {
+		timeout = READ_TIMEOUT;		// In seconds
+	}
+	
+	obj->timeout = timeout;
+
+	if (infile) {
+		obj->fd = open(infile, O_RDONLY | O_NOCTTY);	// If we open a serial device, make sure it doesn't become the controlling TTY
+		
+		if (obj->fd < 0) {
+			logmsg(LL_ERROR, "Could not open input file/device %s: %s\n", infile, strerror(errno));
+			return -2;
+		}
+		
+		if (tcgetattr(obj->fd, &(obj->oldtio)) == 0) {
+			
+			logmsg(LL_VERBOSE, "Input device seems to be a serial terminal\n");
+			
+			obj->terminal = 1;					// If we can get terminal attributes, assume we're reading from a serial device
+			
+			memset(&(obj->newtio), 0, sizeof(struct termios));		/* Clear the new terminal data structure */
+		
+			obj->newtio.c_cflag = B115200 | CS8 | CLOCAL | CREAD;	// Start at 115200 baud, 8-bit characters, ignore control lines, enable reading
+			obj->newtio.c_iflag = 0;
+			obj->newtio.c_oflag = 0;	
+			obj->newtio.c_lflag = 0;						// Set input mode (non-canonical, no echo, etc.)
+			obj->newtio.c_cc[VTIME] = (timeout * 10);  		// Inter-character timer or timeout in 0.1s (0 = unused)
+			obj->newtio.c_cc[VMIN]  = 0;   					// Blocking read until 1 char received or timeout
+			
+			tcflush(obj->fd, TCIFLUSH);						// Flush any data still left in the input buffer, to avoid confusing the parsers
+			tcsetattr(obj->fd, TCSANOW, &(obj->newtio));	// Set new terminal attributes
+		}
+	}
+	
+	if (dumpfile) {
+		// TODO: use a file descriptor rather than a stdio pointer
+		obj->dumpfile = fopen(dumpfile, "a");
+		if (obj->dumpfile == NULL) {
+			logmsg(LL_ERROR, "Could not open output file %s\n", dumpfile);
+			return -3;
+		}
+	} else {
+		obj->dumpfile = NULL;
+	}
+	
+	if (bufsize == 0) {
+		bufsize = PARSER_BUFLEN;
+	}
+	
+	obj->buffer = malloc(bufsize);
+	if (obj->buffer) {
+		obj->bufsize = bufsize;
+	} else {
+		logmsg(LL_ERROR, "Could not allocate %lu byte telegram buffer\n", (unsigned long)bufsize);
+		return -4;
+	}
+		
+	return 0;	
+}
+
+
+void telegram_parser_close (telegram_parser *obj)
+{
+	if (obj == NULL) {
+		return;
+	}
+	
+	if (obj->bufsize && obj->buffer) {
+		free(obj->buffer);
+		obj->buffer = NULL;
+		obj->bufsize = 0;
+		obj->len = 0;
+	}
+	
+	if (obj->fd > 0) {
+		if (obj->terminal) {
+			tcsetattr(obj->fd, TCSANOW, &(obj->oldtio));	// Restore old port settings
+		}		
+		close(obj->fd);
+		obj->fd = -1;
+		obj->terminal = 0;
+	}
+	
+	if (obj->dumpfile) {
+		fclose(obj->dumpfile);
+		obj->dumpfile = NULL;
+	}
+}
+
+
+int telegram_parser_read (telegram_parser *obj)
+{
+	if (obj == NULL) {
+		return -1;
+	}
+	
+	if (obj->buffer == NULL || obj->bufsize == 0) {
+		return -2;
+	}
+	
+	if (obj->fd <= 0) {
+		return -3;
+	}
+	
+	obj->len = read_telegram(obj->fd, obj->buffer, obj->bufsize, obj->bufsize);
+
+	if (obj->len) {
+		parser_init(&(obj->parser));
+		parser_execute(&(obj->parser), obj->buffer, obj->len, 1);
+		obj->status = parser_finish(&(obj->parser));	// 1 if final state reached, -1 on error, 0 if final state not reached
+		if (obj->status == 1) {
+			uint16_t crc = crc_telegram(obj->buffer, obj->len);
+			// TODO: actually report CRC error
+			logmsg(LL_VERBOSE, "Parsing successful, data CRC 0x%x, telegram CRC 0x%x\n", crc, obj->parser.crc16);
+		} 
+		if (obj->parser.parse_errors) {
+			logmsg(LL_VERBOSE, "Parse errors: %d\n", obj->parser.parse_errors);
+			if (obj->dumpfile) {
+				fwrite(obj->buffer, 1, obj->len, obj->dumpfile);
+				fflush(obj->dumpfile);
+			}
+		}
+	}
+	
+	if (obj->terminal && obj->len == 0) {
+		
+		// Try a different baud rate, maybe we have an old DSMR meter that runs at 9600 baud
+		
+		speed_t baudrate = cfgetispeed(&(obj->newtio));
+		
+		if (baudrate == B115200)
+			cfsetispeed(&(obj->newtio), B9600);	
+		else
+			cfsetispeed(&(obj->newtio), B115200);
+		
+		tcflush(obj->fd, TCIFLUSH);				// Flush any data still left in the input buffer, to avoid confusing the parsers
+		tcsetattr(obj->fd, TCSANOW, &(obj->newtio));	// Set new terminal attributes
+	}
+
+	// TODO: report errors
+	
+	return 0;
+}	
