@@ -183,7 +183,7 @@ int main (int argc, char **argv)
 		
 		mpack_write_u32(&writer, (data->E_in[0] + data->E_in[1]) * 1000);
 		mpack_write_u32(&writer, (data->E_out[0] + data->E_out[1]) * 1000);
-		mpack_write_i16(&writer, (data->P_in[0] - data->P_out[0]));
+		mpack_write_i16(&writer, (data->P_in[0] - data->P_out[0]) * 1000);
 		
 		mpack_finish_array(&writer);
 		mpack_finish_array(&writer);
