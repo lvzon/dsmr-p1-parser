@@ -161,6 +161,8 @@ int main (int argc, char **argv)
 	fwrite(mpackdata, size, 1, out);
 	fflush(out);
 	
+	double last_gas_count = 0;
+	
 	do {
 		
 		telegram_parser_read(&parser);
@@ -170,9 +172,10 @@ int main (int argc, char **argv)
 		
 		// Write variable values for device 1
 		
-		mpack_start_array(&writer, 3);
+		mpack_start_array(&writer, 4);
 		mpack_write_cstr(&writer, "DVALS");
 		mpack_write_u8(&writer, 1);
+		mpack_write_u32(&writer, data->timestamp);
 		mpack_start_array(&writer, 3);
 		
 		// TODO: write 64-bit integers of total Wh-energy counters, without casting from double
@@ -185,7 +188,22 @@ int main (int argc, char **argv)
 		mpack_finish_array(&writer);
 		mpack_finish_array(&writer);
 		
-		
+		if (last_gas_count != data->dev_counter[0]) {
+			
+			// Write variable values for device 2
+			
+			mpack_start_array(&writer, 4);
+			mpack_write_cstr(&writer, "DVALS");
+			mpack_write_u8(&writer, 2);
+			mpack_write_u32(&writer, data->dev_counter_timestamp[0]);
+			mpack_start_array(&writer, 1);			
+			mpack_write_float(&writer, data->dev_counter[0]);
+			mpack_finish_array(&writer);
+			mpack_finish_array(&writer);			
+			
+			last_gas_count = data->dev_counter[0];
+		}
+				
 		// Write data to output stream	
 		// We can either send the data manually after destroying the writer,
 		// or define a flush-function with mpack_writer_set_flush()  
