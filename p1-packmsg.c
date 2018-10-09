@@ -17,17 +17,26 @@ int main (int argc, char **argv)
 	init_msglogger();
 	logger.loglevel = LL_VERBOSE;
 	
-	char *infile, *server, *port;
+	char *infile, *outfile = NULL, *server = NULL, *port = NULL;
 	
-	if (argc < 4) {
-		logmsg(LL_NORMAL, "Usage: %s <input file or device> <server> <port>\n", argv[0]);
+	if (argc < 4 && argc != 3) {
+		logmsg(LL_NORMAL, "Usage: %s <input file or device> [<server> <port>] [<outfile>]\n", argv[0]);
 		exit(1);
 	}
 	
 	infile = argv[1];
-	server = argv[2];
-	port = argv[3];
-	
+
+    if (argc == 3) {
+        outfile = argv[2];
+    } else {
+	    server = argv[2];
+	    port = argv[3];
+        if (argc == 5) {
+            outfile = argv[4];
+        }
+	}
+
+
 	telegram_parser parser;
 	
 	telegram_parser_open(&parser, infile, 0, 0, NULL);
@@ -168,15 +177,21 @@ int main (int argc, char **argv)
 	
 
 	// Dump messages to file
-
-	FILE *out = fopen("msgpack.dat", "w");
-	fwrite(mpackdata, size, 1, out);
-	fflush(out);
+    
+    FILE *out = NULL;
+    if (outfile) {
+	    out = fopen(outfile, "w");
+	    fwrite(mpackdata, size, 1, out);
+	    fflush(out);
+    }
 
     // Open server socket
     // TODO check for errors
 
-    int sockfd = socket_connect_tcp(server, port);
+    int sockfd = 0;
+    if (server) {
+        sockfd = socket_connect_tcp(server, port);
+    }
 
     // Send messages to server
     // TODO check for errors
@@ -240,20 +255,30 @@ int main (int argc, char **argv)
 		}
 		
 		// Dump messages to file
-	
-		fwrite(mpackdata, size, 1, out);
-		fflush(out);
+	    
+        if (out) {
+		    fwrite(mpackdata, size, 1, out);
+		    fflush(out);
+        }
 
         // Send messages to server
         
-        len = size;
-        result = sendall(sockfd, mpackdata, &len);
-        // TODO check for errors
+        if (sockfd) {
+            len = size;
+            result = sendall(sockfd, mpackdata, &len);
+            // TODO check for errors
+        }
 				
 	} while (parser.terminal);		// If we're connected to a serial device, keep reading, otherwise exit
 	
-	fclose(out);
-    close(sockfd);
+    if (out) {
+	    fclose(out);
+    }
+
+    if (sockfd) {
+        close(sockfd);
+    }
+
 	telegram_parser_close(&parser);
 	
 	return 0;
