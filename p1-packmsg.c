@@ -11,11 +11,28 @@
 // For file output
 #include <stdio.h>
 
+// Messagepack buffer
 
-int connect_server (char *server, char *port) {
+#define BUFSIZE 10240
+
+char buffer[BUFSIZE];
+
+
+// Global counter for last gas meter value
+
+double last_gas_count = 0;
 	
-	int sockfd = 0;
-    
+// Global server address and socket file descriptor
+
+char *server = NULL, *port = NULL;
+int sockfd = 0;
+
+
+int connect_server () {
+	
+	if (sockfd > 0)
+		close(sockfd);
+	
 	if (server && port) {
         sockfd = socket_connect_tcp(server, port);
     }
@@ -24,7 +41,7 @@ int connect_server (char *server, char *port) {
 }
 
 
-int send_data (int sockfd, char *data, size_t size) {
+int send_data (char *data, size_t size) {
 	
 	if (data == NULL)
 		return -1;
@@ -38,47 +55,14 @@ int send_data (int sockfd, char *data, size_t size) {
     return result;
 }
 
-int main (int argc, char **argv)
-{
-	
-	init_msglogger();
-	logger.loglevel = LL_VERBOSE;
-	
-	char *infile, *outfile = NULL, *server = NULL, *port = NULL;
-	
-	if (argc < 4 && argc != 3) {
-		logmsg(LL_NORMAL, "Usage: %s <input file or device> [<server> <port>] [<outfile>]\n", argv[0]);
-		exit(1);
-	}
-	
-	infile = argv[1];
 
-    if (argc == 3) {
-        outfile = argv[2];
-    } else {
-	    server = argv[2];
-	    port = argv[3];
-        if (argc == 5) {
-            outfile = argv[4];
-        }
-	}
-
-
-	telegram_parser parser;
+int send_header (struct dsmr_data_struct *data, FILE *out) {
 	
-	telegram_parser_open(&parser, infile, 0, 0, NULL);
-	telegram_parser_read(&parser);
-
-	// TODO: Exit on errors, time-outs, etc.
-	
-	struct dsmr_data_struct *data = parser.data;
-	
+	if (buffer == NULL || data == NULL)
+		return -1;
 	
 	// Initialise messagepack buffer
 	
-	#define BUFSIZE 10240
-	
-	char buffer[BUFSIZE];
 	char *mpackdata;
 	
 	mpackdata = buffer;
@@ -203,27 +187,25 @@ int main (int argc, char **argv)
 	}
 	
 
-	// Dump messages to file
+	// Dump header to file
     
-    FILE *out = NULL;
-    if (outfile) {
-	    out = fopen(outfile, "w");
+    if (out) {
 	    fwrite(mpackdata, size, 1, out);
 	    fflush(out);
     }
 
-    int sockfd = 0, result = -1;
+    int result = -1;
     
     if (server && port) {
     	
     	do {
     		// Open server socket    		
-    		sockfd = connect_server(server, port);
+    		sockfd = connect_server();
     		
     		if (sockfd > 0) {
     			
     			// Send header message to server    		
-    			result = send_data(sockfd, mpackdata, size);
+    			result = send_data(mpackdata, size);
     			
     			if (result < 0)
     				sleep(1);
@@ -235,89 +217,165 @@ int main (int argc, char **argv)
     		
     	} while (sockfd <= 0 || result < 0);
     }
+	
+    return result;
+}
 
 
-	double last_gas_count = 0;
+int send_values (struct dsmr_data_struct *data, FILE *out) {
+	
+	if (buffer == NULL || data == NULL)
+		return -1;
+	
+	// Initialise messagepack buffer
+	
+	char *mpackdata;
+	
+	mpackdata = buffer;
+	
+	size_t size = BUFSIZE;
+	mpack_writer_t writer;
+
+	int result = -1;
+	
+	mpack_writer_init(&writer, mpackdata, BUFSIZE);
+	
+	// Write variable values for device 1
+	
+	mpack_start_array(&writer, 4);
+	mpack_write_cstr(&writer, "DVALS");
+	mpack_write_u8(&writer, 1);
+	mpack_write_u32(&writer, data->timestamp);
+	mpack_start_array(&writer, 3);
+	
+	// TODO: write 64-bit integers of total Wh-energy counters, without casting from double
+	// Also, correctly handle units, rather than assuming hard-coded units
+	
+	mpack_write_u32(&writer, (data->E_in[0] + data->E_in[1]) * 1000);
+	mpack_write_u32(&writer, (data->E_out[0] + data->E_out[1]) * 1000);
+	mpack_write_i16(&writer, (data->P_in[0] - data->P_out[0]) * 1000);
+	
+	mpack_finish_array(&writer);
+	mpack_finish_array(&writer);
+	
+	if (last_gas_count != data->dev_counter[0]) {
+		
+		// Write variable values for device 2
+		
+		mpack_start_array(&writer, 4);
+		mpack_write_cstr(&writer, "DVALS");
+		mpack_write_u8(&writer, 2);
+		mpack_write_u32(&writer, data->dev_counter_timestamp[0]);
+		mpack_start_array(&writer, 1);			
+		mpack_write_float(&writer, data->dev_counter[0]);
+		mpack_finish_array(&writer);
+		mpack_finish_array(&writer);			
+		
+		last_gas_count = data->dev_counter[0];
+	}
+			
+	// Write data to output stream	
+	// We can either send the data manually after destroying the writer,
+	// or define a flush-function with mpack_writer_set_flush()  
+	
+	if (mpack_writer_destroy(&writer) != mpack_ok) {
+		fprintf(stderr, "An error occurred encoding the data!\n");
+		return -2;
+	} else {
+		size = mpack_writer_buffer_used(&writer);
+		printf("Wrote %lu bytes of total msgpack data to buffer\n", size);
+	}
+	
+	// Dump messages to file
+	
+	if (out) {
+		fwrite(mpackdata, size, 1, out);
+		fflush(out);
+	}
+
+	if (server && port) {
+		
+		// Send messages to server
+		
+		if (sockfd <= 0) {
+			
+			// Socket seems to be closed, try reopening connection
+			send_header(data, out);
+			return -3;
+			
+		} else if (sockfd > 0) {
+			
+			result = send_data(mpackdata, size);
+			
+			if (result < 0) {
+				
+				// Sending failed, try reconnecting
+				send_header(data, out);
+				return -4;
+				
+				// TODO: use separate buffers for header and values, resend values
+			}
+		}
+	}
+	
+	return 0;
+}	
+
+
+int main (int argc, char **argv)
+{
+	
+	init_msglogger();
+	logger.loglevel = LL_VERBOSE;
+	
+	char *infile, *outfile = NULL;
+	
+	if (argc < 4 && argc != 3) {
+		logmsg(LL_NORMAL, "Usage: %s <input file or device> [<server> <port>] [<outfile>]\n", argv[0]);
+		exit(1);
+	}
+	
+	infile = argv[1];
+
+    if (argc == 3) {
+        outfile = argv[2];
+    } else {
+	    server = argv[2];
+	    port = argv[3];
+        if (argc == 5) {
+            outfile = argv[4];
+        }
+	}
+
+
+	telegram_parser parser;
+	
+	telegram_parser_open(&parser, infile, 0, 0, NULL);
+	telegram_parser_read(&parser);
+
+	// TODO: Exit on errors, time-outs, etc.
+	
+	struct dsmr_data_struct *data = parser.data;
+
+	// Dump messages to file if specified
+    
+    FILE *out = NULL;
+    if (outfile) {
+	    out = fopen(outfile, "w");
+    }
+	
+	// Send packmsg header
+    
+	send_header(data, out);
+	
+	// Start main reading loop
 	
 	do {
 		
 		telegram_parser_read(&parser);
 		// TODO: handle errors, time-outs, etc.
 		
-		mpack_writer_init(&writer, mpackdata, BUFSIZE);
-		
-		// Write variable values for device 1
-		
-		mpack_start_array(&writer, 4);
-		mpack_write_cstr(&writer, "DVALS");
-		mpack_write_u8(&writer, 1);
-		mpack_write_u32(&writer, data->timestamp);
-		mpack_start_array(&writer, 3);
-		
-		// TODO: write 64-bit integers of total Wh-energy counters, without casting from double
-		// Also, correctly handle units, rather than assuming hard-coded units
-		
-		mpack_write_u32(&writer, (data->E_in[0] + data->E_in[1]) * 1000);
-		mpack_write_u32(&writer, (data->E_out[0] + data->E_out[1]) * 1000);
-		mpack_write_i16(&writer, (data->P_in[0] - data->P_out[0]) * 1000);
-		
-		mpack_finish_array(&writer);
-		mpack_finish_array(&writer);
-		
-		if (last_gas_count != data->dev_counter[0]) {
-			
-			// Write variable values for device 2
-			
-			mpack_start_array(&writer, 4);
-			mpack_write_cstr(&writer, "DVALS");
-			mpack_write_u8(&writer, 2);
-			mpack_write_u32(&writer, data->dev_counter_timestamp[0]);
-			mpack_start_array(&writer, 1);			
-			mpack_write_float(&writer, data->dev_counter[0]);
-			mpack_finish_array(&writer);
-			mpack_finish_array(&writer);			
-			
-			last_gas_count = data->dev_counter[0];
-		}
-				
-		// Write data to output stream	
-		// We can either send the data manually after destroying the writer,
-		// or define a flush-function with mpack_writer_set_flush()  
-		
-		if (mpack_writer_destroy(&writer) != mpack_ok) {
-			fprintf(stderr, "An error occurred encoding the data!\n");
-			continue;
-		} else {
-			size = mpack_writer_buffer_used(&writer);
-			printf("Wrote %lu bytes of total msgpack data to buffer\n", size);
-		}
-		
-		// Dump messages to file
-	    
-        if (out) {
-		    fwrite(mpackdata, size, 1, out);
-		    fflush(out);
-        }
-
-        if (server && port) {
-        	// Send messages to server
-        	
-        	if (sockfd <= 0) {
-        		sockfd = connect_server(server, port);
-        	}
-        	
-        	if (sockfd > 0) {
-        		
-        		result = send_data(sockfd, mpackdata, size);
-        		
-        		if (result < 0) {
-        			// Try reconnecting, resend data
-        			close(sockfd);
-        			sockfd = connect_server(server, port);
-        			result = send_data(sockfd, mpackdata, size);
-        		}
-        	}
-		}
+		send_values(data, out);
 		
 	} while (parser.terminal);		// If we're connected to a serial device, keep reading, otherwise exit
 	
