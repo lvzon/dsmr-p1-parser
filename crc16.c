@@ -28,7 +28,6 @@ uint16_t crc16 (const uint8_t *data, unsigned int length)
 {
     // Polynomial: x^16 + x^15 + x^2 + 1 (0xa001)
 	
-    uint8_t x;
     uint16_t crc = 0;
 
     while (length--) {
