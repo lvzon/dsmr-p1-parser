@@ -11,6 +11,33 @@
 // For file output
 #include <stdio.h>
 
+
+int connect_server (char *server, char *port) {
+	
+	int sockfd = 0;
+    
+	if (server && port) {
+        sockfd = socket_connect_tcp(server, port);
+    }
+    
+    return sockfd;
+}
+
+
+int send_data (int sockfd, char *data, size_t size) {
+	
+	if (data == NULL)
+		return -1;
+	
+	if (sockfd <= 0)
+		return -2;
+	
+    int len = size;
+    int result = sendall(sockfd, data, &len);
+	
+    return result;
+}
+
 int main (int argc, char **argv)
 {
 	
@@ -185,19 +212,30 @@ int main (int argc, char **argv)
 	    fflush(out);
     }
 
-    // Open server socket
-    // TODO check for errors
-
-    int sockfd = 0;
-    if (server) {
-        sockfd = socket_connect_tcp(server, port);
+    int sockfd = 0, result = -1;
+    
+    if (server && port) {
+    	
+    	do {
+    		// Open server socket    		
+    		sockfd = connect_server(server, port);
+    		
+    		if (sockfd > 0) {
+    			
+    			// Send header message to server    		
+    			result = send_data(sockfd, mpackdata, size);
+    			
+    			if (result < 0)
+    				sleep(1);
+    			
+    		} else {
+    			
+    			sleep(1);
+    		}
+    		
+    	} while (sockfd <= 0 || result < 0);
     }
 
-    // Send messages to server
-    // TODO check for errors
-
-    int len = size;
-    int result = sendall(sockfd, mpackdata, &len);
 
 	double last_gas_count = 0;
 	
@@ -248,10 +286,10 @@ int main (int argc, char **argv)
 		
 		if (mpack_writer_destroy(&writer) != mpack_ok) {
 			fprintf(stderr, "An error occurred encoding the data!\n");
-			exit(1);
+			continue;
 		} else {
 			size = mpack_writer_buffer_used(&writer);
-			printf("Wrote %lu bytes of total msgpack data\n", size);
+			printf("Wrote %lu bytes of total msgpack data to buffer\n", size);
 		}
 		
 		// Dump messages to file
@@ -261,21 +299,33 @@ int main (int argc, char **argv)
 		    fflush(out);
         }
 
-        // Send messages to server
-        
-        if (sockfd) {
-            len = size;
-            result = sendall(sockfd, mpackdata, &len);
-            // TODO check for errors
-        }
-				
+        if (server && port) {
+        	// Send messages to server
+        	
+        	if (sockfd <= 0) {
+        		sockfd = connect_server(server, port);
+        	}
+        	
+        	if (sockfd > 0) {
+        		
+        		result = send_data(sockfd, mpackdata, size);
+        		
+        		if (result < 0) {
+        			// Try reconnecting, resend data
+        			close(sockfd);
+        			sockfd = connect_server(server, port);
+        			result = send_data(sockfd, mpackdata, size);
+        		}
+        	}
+		}
+		
 	} while (parser.terminal);		// If we're connected to a serial device, keep reading, otherwise exit
 	
     if (out) {
 	    fclose(out);
     }
 
-    if (sockfd) {
+    if (sockfd > 0) {
         close(sockfd);
     }
 
@@ -284,7 +334,3 @@ int main (int argc, char **argv)
 	return 0;
 }
 
-/*
-
-
-*/
