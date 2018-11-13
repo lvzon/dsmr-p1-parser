@@ -5,7 +5,7 @@
 #include "dsmr-data.h"
 
 uint16_t crc_telegram (const uint8_t *data, unsigned int length);
-size_t read_telegram (int fd, uint8_t *buf, size_t bufsize, size_t maxfailbytes);
+size_t read_telegram (int fd, uint8_t *buf, size_t bufsize, size_t maxfailbytes, int echo);
 
 
 // Default size of the buffer used to read and store telegrams, determines maximum telegram size
@@ -21,6 +21,7 @@ typedef struct telegram_parser_struct {
 	
 	int fd;					// Input file descriptor
 	int timeout;			// Time-out for reading serial data, in seconds
+	int echo;				// Flag for indicating that telegram data should be echoed to the serial device
 	FILE *dumpfile;			// File descriptor used to write telegrams with parsing errors
 	int terminal;			// Flag to indicate whether input is a terminal or a file
 	struct termios 	oldtio, 

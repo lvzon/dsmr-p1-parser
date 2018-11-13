@@ -41,7 +41,7 @@ uint16_t crc_telegram (const uint8_t *data, unsigned int length)
 }
 
 
-size_t read_telegram (int fd, uint8_t *buf, size_t bufsize, size_t maxfailbytes)
+size_t read_telegram (int fd, uint8_t *buf, size_t bufsize, size_t maxfailbytes, int echo)
 {
 	// Try to read a full P1-telegram from a file-handle and store it in a buffer
 	
@@ -70,6 +70,11 @@ size_t read_telegram (int fd, uint8_t *buf, size_t bufsize, size_t maxfailbytes)
 						if (buf[offset] == '\r') {
 							// Old-style telegram without CRC
 							logmsg(LL_VERBOSE, "Old-style telegram with length %lu\n", (unsigned long)offset + len);
+							if (echo) {
+								if (write(fd, buf, offset + len) < offset + len) {
+									logmsg(LL_VERBOSE, "Failed to echo telegram data\n");
+								}
+							}
 							return offset + len;
 						} else {
 							// Possible start of CRC, try reading 4 more bytes
@@ -81,6 +86,11 @@ size_t read_telegram (int fd, uint8_t *buf, size_t bufsize, size_t maxfailbytes)
 							if (len == 4 && buf[offset + 2] == '\r') {
 								// New style telegram with CRC
 								logmsg(LL_VERBOSE, "New-style telegram with length %lu\n", (unsigned long)offset + len);
+								if (echo) {
+									if (write(fd, buf, offset + len) < offset + len) {
+										logmsg(LL_VERBOSE, "Failed to echo telegram data\n");
+									}
+								}
 								return offset + len;
 							}							
 						}
@@ -124,6 +134,7 @@ int telegram_parser_open (telegram_parser *obj, char *infile, size_t bufsize, in
 	
 	obj->fd = -1;
 	obj->terminal = 0;
+	obj->echo = 0;
 	
 	if (timeout <= 0) {
 		timeout = READ_TIMEOUT;		// In seconds
@@ -132,7 +143,7 @@ int telegram_parser_open (telegram_parser *obj, char *infile, size_t bufsize, in
 	obj->timeout = timeout;
 
 	if (infile) {
-		obj->fd = open(infile, O_RDONLY | O_NOCTTY);	// If we open a serial device, make sure it doesn't become the controlling TTY
+		obj->fd = open(infile, O_RDWR | O_NOCTTY);	// If we open a serial device, make sure it doesn't become the controlling TTY
 		
 		if (obj->fd < 0) {
 			logmsg(LL_ERROR, "Could not open input file/device %s: %s\n", infile, strerror(errno));
@@ -144,6 +155,7 @@ int telegram_parser_open (telegram_parser *obj, char *infile, size_t bufsize, in
 			logmsg(LL_VERBOSE, "Input device seems to be a serial terminal\n");
 			
 			obj->terminal = 1;					// If we can get terminal attributes, assume we're reading from a serial device
+			obj->echo = 1;						// By defeult, we echo the data back to the serial device
 			
 			memset(&(obj->newtio), 0, sizeof(struct termios));		/* Clear the new terminal data structure */
 		
@@ -229,7 +241,7 @@ int telegram_parser_read (telegram_parser *obj)
 		return -3;
 	}
 	
-	obj->len = read_telegram(obj->fd, obj->buffer, obj->bufsize, obj->bufsize);
+	obj->len = read_telegram(obj->fd, obj->buffer, obj->bufsize, obj->bufsize, obj->echo);
 
 	if (obj->len) {
 		parser_init(&(obj->parser));
