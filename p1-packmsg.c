@@ -17,6 +17,9 @@
 
 char buffer[BUFSIZE];
 
+// Number of phases
+
+int phases = 1;
 
 // Global counter for last gas meter value
 
@@ -141,6 +144,29 @@ int send_header (struct dsmr_data_struct *data, FILE *out) {
 	mpack_write_cstr(&writer, "W");
 	mpack_finish_map(&writer);
 	mpack_finish_array(&writer);
+
+	if (phases > 1) {
+		
+		// Net power on phase 2
+		mpack_start_array(&writer, 3);
+		mpack_write_cstr(&writer, "VAR");
+		mpack_write_cstr(&writer, "P_L2");
+		mpack_start_map(&writer, 1);
+		mpack_write_cstr(&writer, "unit");
+		mpack_write_cstr(&writer, "W");
+		mpack_finish_map(&writer);
+		mpack_finish_array(&writer);
+		
+		// Net power on phase 3
+		mpack_start_array(&writer, 3);
+		mpack_write_cstr(&writer, "VAR");
+		mpack_write_cstr(&writer, "P_L3");
+		mpack_start_map(&writer, 1);
+		mpack_write_cstr(&writer, "unit");
+		mpack_write_cstr(&writer, "W");
+		mpack_finish_map(&writer);
+		mpack_finish_array(&writer);
+	}
 	
 	// Gas imported
 	mpack_start_array(&writer, 3);
@@ -157,10 +183,18 @@ int send_header (struct dsmr_data_struct *data, FILE *out) {
 	mpack_start_array(&writer, 3);
 	mpack_write_cstr(&writer, "DVARS");
 	mpack_write_u8(&writer, 1);
-	mpack_start_array(&writer, 3);
+	if (phases == 3) {
+		mpack_start_array(&writer, 5);
+	} else {
+		mpack_start_array(&writer, 3);
+	}
 	mpack_write_cstr(&writer, "E_in");
 	mpack_write_cstr(&writer, "E_out");
 	mpack_write_cstr(&writer, "P_L1");
+	if (phases == 3) {
+		mpack_write_cstr(&writer, "P_L2");
+		mpack_write_cstr(&writer, "P_L3");
+	}
 	mpack_finish_array(&writer);
 	mpack_finish_array(&writer);
 	
@@ -246,7 +280,11 @@ int send_values (struct dsmr_data_struct *data, FILE *out) {
 	mpack_write_cstr(&writer, "DVALS");
 	mpack_write_u8(&writer, 1);
 	mpack_write_u32(&writer, data->timestamp);
-	mpack_start_array(&writer, 3);
+	if (phases == 3) {
+		mpack_start_array(&writer, 5);
+	} else {
+		mpack_start_array(&writer, 3);
+	}
 	
 	// TODO: write 64-bit integers of total Wh-energy counters, without casting from double
 	// Also, correctly handle units, rather than assuming hard-coded units
@@ -254,6 +292,10 @@ int send_values (struct dsmr_data_struct *data, FILE *out) {
 	mpack_write_u32(&writer, (data->E_in[0] + data->E_in[1]) * 1000);
 	mpack_write_u32(&writer, (data->E_out[0] + data->E_out[1]) * 1000);
 	mpack_write_i16(&writer, (data->P_in[0] - data->P_out[0]) * 1000);
+	if (phases == 3) {
+		mpack_write_i16(&writer, (data->P_in[1] - data->P_out[1]) * 1000);
+		mpack_write_i16(&writer, (data->P_in[2] - data->P_out[2]) * 1000);
+	}
 	
 	mpack_finish_array(&writer);
 	mpack_finish_array(&writer);
@@ -356,7 +398,13 @@ int main (int argc, char **argv)
 	// TODO: Exit on errors, time-outs, etc.
 	
 	struct dsmr_data_struct *data = parser.data;
-
+	
+	// Assume we have a three-phase meter if we see voltage or power on L2 or L3
+	
+	if (data->V[1] > 0 || data->V[2] > 0 || data->P_in[1] > 0 || data->P_in[2] > 0 || data->P_out[1] > 0 || data->P_out[2] > 0) {
+		phases = 3;
+	}
+	
 	// Dump messages to file if specified
     
     FILE *out = NULL;
