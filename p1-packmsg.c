@@ -289,8 +289,8 @@ int send_values (struct dsmr_data_struct *data, FILE *out) {
 	// TODO: write 64-bit integers of total Wh-energy counters, without casting from double
 	// Also, correctly handle units, rather than assuming hard-coded units
 	
-	mpack_write_u32(&writer, (data->E_in[0] + data->E_in[1]) * 1000);
-	mpack_write_u32(&writer, (data->E_out[0] + data->E_out[1]) * 1000);
+	mpack_write_u32(&writer, (data->E_in[1] + data->E_in[2]) * 1000);
+	mpack_write_u32(&writer, (data->E_out[1] + data->E_out[2]) * 1000);
 	mpack_write_i16(&writer, (data->P_in[0] - data->P_out[0]) * 1000);
 	if (phases == 3) {
 		mpack_write_i16(&writer, (data->P_in[1] - data->P_out[1]) * 1000);
