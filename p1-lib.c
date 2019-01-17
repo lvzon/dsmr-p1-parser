@@ -217,6 +217,8 @@ void telegram_parser_close (telegram_parser *obj)
 
 int telegram_parser_read (telegram_parser *obj)
 {
+	uint16_t crc = 0;
+	
 	if (obj == NULL) {
 		return -1;
 	}
@@ -229,6 +231,8 @@ int telegram_parser_read (telegram_parser *obj)
 		return -3;
 	}
 	
+	obj->parser.crc16 = 0;
+	
 	obj->len = read_telegram(obj->fd, obj->buffer, obj->bufsize, obj->bufsize);
 
 	if (obj->len) {
@@ -236,7 +240,7 @@ int telegram_parser_read (telegram_parser *obj)
 		parser_execute(&(obj->parser), (const char *)(obj->buffer), obj->len, 1);
 		obj->status = parser_finish(&(obj->parser));	// 1 if final state reached, -1 on error, 0 if final state not reached
 		if (obj->status == 1) {
-			uint16_t crc = crc_telegram(obj->buffer, obj->len);
+			crc = crc_telegram(obj->buffer, obj->len);
 			// TODO: actually report CRC error
 			logmsg(LL_VERBOSE, "Parsing successful, data CRC 0x%x, telegram CRC 0x%x\n", crc, obj->parser.crc16);
 		} 
@@ -264,7 +268,12 @@ int telegram_parser_read (telegram_parser *obj)
 		tcsetattr(obj->fd, TCSANOW, &(obj->newtio));	// Set new terminal attributes
 	}
 
-	// TODO: report errors
+	// TODO: report more errors
+	
+	if (obj->parser.crc16 && obj->parser.crc16 != crc) {
+		logmsg(LL_ERROR, "data CRC 0x%x does not match telegram CRC 0x%x\n", crc, obj->parser.crc16);
+		return -4;
+	}
 	
 	return 0;
 }	
