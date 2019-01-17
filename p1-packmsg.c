@@ -420,10 +420,12 @@ int main (int argc, char **argv)
 	
 	do {
 		
-		telegram_parser_read(&parser);
+		int result = telegram_parser_read(&parser);
 		// TODO: handle errors, time-outs, etc.
 		
-		send_values(data, out);
+		if (result == 0) {	// Ignore CRC-errors etc.
+			send_values(data, out);
+		}
 		
 	} while (parser.terminal);		// If we're connected to a serial device, keep reading, otherwise exit
 	
