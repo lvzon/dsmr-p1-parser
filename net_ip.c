@@ -79,6 +79,32 @@ void fdset_addfd(struct fdset *fdset, int fd)
 }
 
 
+struct pollfd * fdset_get_pollfdstruct(struct fdset *fdset) 
+{
+	struct pollfd *pollfds;
+	
+	if (fdset == NULL)
+		return NULL;
+	
+	#ifdef USE_SELECT
+	
+		return NULL;
+		
+	#else
+	
+		if (fdset->poll_nfds < MAX_POLLFDS) {
+			pollfds = &(fdset->pollfds[fdset->poll_nfds++]);
+			logmsg(LL_VERBOSE, "Returning pollfd structure (%d slots taken, max = %d)\n", fdset->poll_nfds, MAX_POLLFDS);
+			return pollfds;
+		} else {	
+			logmsg(LL_ERROR, "adding struct to pollfdset, MAX_POLLFDS reached (%d slots)!\n", MAX_POLLFDS);
+			return NULL;
+		}
+		
+	#endif
+}
+
+
 void fdset_removefd(struct fdset *fdset, int fd) 
 {
 	if (fdset == NULL || fd <= 0)
@@ -184,13 +210,15 @@ int fdset_getfd_read(struct fdset *fdset)
 	#else
 	
 		int idx;
+		int fd = -2;
 		
 		for (idx = 0 ; idx < fdset->poll_nfds ; idx++) {
 			//int fd = fdset->pollfds[idx].fd;
 			if (fdset->pollfds[idx].revents & POLLIN) {
-				logmsg(LL_VERBOSE, "fd %d has data to read\n", idx);	
+				fd = fdset->pollfds[idx].fd;
+				logmsg(LL_VERBOSE, "fd %d has data to read\n", fd);	
 				fdset->pollfds[idx].revents &= !POLLIN;		// clear read-event bit
-				return idx;
+				return fd;
 			}
 		}
 	#endif
@@ -646,6 +674,7 @@ int socket_connect_tcp(const char *server, const char *port)
 
     if (p == NULL) {
 		logmsg(LL_ERROR, "Failed to connect to %s:%s\n", server, port);
+		freeaddrinfo(servinfo);
         return -3;
     }
 

@@ -49,6 +49,7 @@ struct fdset {
 
 void fdset_clear(struct fdset *fdset);
 void fdset_addfd(struct fdset *fdset, int fd);
+struct pollfd * fdset_get_pollfdstruct(struct fdset *fdset);
 void fdset_removefd(struct fdset *fdset, int fd);
 int fdset_wait(struct fdset *fdset, int timeout);
 int fdset_getfd_read(struct fdset *fdset);
