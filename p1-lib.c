@@ -132,7 +132,7 @@ int telegram_parser_open (telegram_parser *obj, char *infile, size_t bufsize, in
 	obj->timeout = timeout;
 
 	if (infile) {
-		obj->fd = open(infile, O_RDONLY | O_NOCTTY);	// If we open a serial device, make sure it doesn't become the controlling TTY
+		obj->fd = open(infile, O_RDWR | O_NOCTTY);	// If we open a serial device, make sure it doesn't become the controlling TTY
 		
 		if (obj->fd < 0) {
 			logmsg(LL_ERROR, "Could not open input file/device %s: %s\n", infile, strerror(errno));
@@ -327,8 +327,8 @@ int telegram_parser_read_d0 (telegram_parser *obj)
 		char zero = 0;
 		
 		for (count = 0 ; count < 65 ; count++) {
-			if (write(obj->fd, &zero, 1) < 1) {
-				logmsg(LL_WARNING, "Unable to send wake-up sequence.\n");
+			if (write(obj->fd, &zero, 1) < 0) {
+				logmsg(LL_WARNING, "Unable to send wake-up sequence: %s\n", strerror(errno));
 				break;
 			}
 		}
@@ -496,7 +496,7 @@ int telegram_parser_read_d0 (telegram_parser *obj)
 	
 	// If a full telegram is received, we should send an ACK and sign off
 	
-	if (telegram) {
+	if (telegram && obj->terminal && obj->mode != 'P') {
 		const char signoffseq[6] = {0x06, 0x01, 'B', '0', 0x03, 'q'};	// 0x06 is ACK, the other bytes are part of a break sequence (complete sign off)
 		write(obj->fd, signoffseq, 6);
 		tcdrain(obj->fd);
