@@ -383,31 +383,37 @@ int telegram_parser_read_d0 (telegram_parser *obj)
 				obj->mode = 'B';
 			case '1':
 				baudrate = B600;
+				logmsg(LL_VERBOSE, "Upgrading to 600 baud\n");
 				break;
 			case 'C':
 				obj->mode = 'B';
 			case '2':
 				baudrate = B1200;
+				logmsg(LL_VERBOSE, "Upgrading to 1200 baud\n");
 				break;
 			case 'D':
 				obj->mode = 'B';
 			case '3':
 				baudrate = B2400;
+				logmsg(LL_VERBOSE, "Upgrading to 2400 baud\n");
 				break;
 			case 'E':
 				obj->mode = 'B';
 			case '4':
 				baudrate = B4800;
+				logmsg(LL_VERBOSE, "Upgrading to 4800 baud\n");
 				break;
 			case 'F':
 				obj->mode = 'B';
 			case '5':
 				baudrate = B9600;
+				logmsg(LL_VERBOSE, "Upgrading to 9600 baud\n");
 				break;
 			case 'G':
 				obj->mode = 'B';
 			case '6':
 				baudrate = B19200;
+				logmsg(LL_VERBOSE, "Upgrading to 19200 baud\n");
 				break;
 			default:
 				if (obj->buffer[4] >= 0x20 && obj->buffer[4] != '/' && obj->buffer[4] != '!' && obj->buffer[4] <= 0x7e) {
@@ -434,16 +440,19 @@ int telegram_parser_read_d0 (telegram_parser *obj)
 				}
 				
 				// Send ACK sequence
+				logmsg(LL_VERBOSE, "Sending ACK\n");
 				char ackseq[6] = {0x06, '0', obj->buffer[4], '0', '\r', '\n'};	// The third character in the ACK message is the baud rate ID
 				write(obj->fd, ackseq, 6);
 				tcdrain(obj->fd);
 			}
 			
-			
+			logmsg(LL_VERBOSE, "Meter detected or assumed to use mode %c\n", obj->mode);
+
 			if (obj->mode != 'A') {
 				
 				// Change baud rate
 			
+				logmsg(LL_VERBOSE, "Setting baud rate\n");
 				cfsetspeed(&(obj->newtio), baudrate);			// Update speed in termio-structure
 				tcsetattr(obj->fd, TCSANOW, &(obj->newtio));	// Set new terminal attributes
 			}
@@ -458,8 +467,6 @@ int telegram_parser_read_d0 (telegram_parser *obj)
 			return -6;
 		}	
 	}
-
-	logmsg(LL_VERBOSE, "Meter detected or assumed to use mode %c\n", obj->mode);
 
 	idx += 1;
 	
@@ -493,10 +500,15 @@ int telegram_parser_read_d0 (telegram_parser *obj)
 		}
 			
 	} while (len > 0 && idx < obj->bufsize);
+
+	if (!telegram) {
+		logmsg(LL_WARNING, "No full telegram found, received %lu bytes of data\n", idx);
+	}
 	
 	// If a full telegram is received, we should send an ACK and sign off
 	
 	if (telegram && obj->terminal && obj->mode != 'P') {
+		logmsg(LL_VERBOSE, "Sending ACK and signing off\n");
 		const char signoffseq[6] = {0x06, 0x01, 'B', '0', 0x03, 'q'};	// 0x06 is ACK, the other bytes are part of a break sequence (complete sign off)
 		write(obj->fd, signoffseq, 6);
 		tcdrain(obj->fd);
