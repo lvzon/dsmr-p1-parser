@@ -499,18 +499,20 @@ int telegram_parser_read_d0 (telegram_parser *obj)
 				logmsg(LL_VERBOSE, "Telegram terminator found at offset %lu\n", (unsigned long)idx);
 				telegram = 1;
 				break;
-			} else if (obj->buffer[idx] < 0x20 || obj->buffer[idx] < 0x7e) {
-				logmsg(LL_ERROR, "Non-printable bytes in telegram, aborting parser\n");
-				// TODO: in mode C or E we could send a NAK and request a resend
-				return -9;
+			} else if (obj->buffer[idx] < 0x7e || obj->buffer[idx] < 0x7e) {
+				logmsg(LL_WARNING, "Non-printable byte (0x%02x) in telegram at index %lu\n", (int)(obj->buffer[idx]), idx);
 			}
 			idx++;
 		}
-			
+		
 	} while (len > 0 && idx < obj->bufsize);
-
+	
+	// TODO: it seems the telegram actually starts with 0x02, ends with 0x03 and that a CRC-byte is sent, 
+	// as "smartmeter-readout" uses the following pattern to match the telegram: ^\x02(.*!\r\n\x03)(.)$
+	
 	if (!telegram) {
 		logmsg(LL_WARNING, "No full telegram found, received %lu bytes of data\n", idx);
+		// TODO: in mode C or E we could send a NAK and request a resend
 	}
 	
 	// If a full telegram is received, we should send an ACK and sign off
