@@ -326,6 +326,12 @@ int telegram_parser_read_d0 (telegram_parser *obj)
 		int count;
 		char zero = 0;
 		
+		logmsg(LL_VERBOSE, "Setting baud rate to 300 baud\n");
+		cfsetspeed(&(obj->newtio), B300);			// Update speed in termio-structure
+		tcsetattr(obj->fd, TCSANOW, &(obj->newtio));	// Set new terminal attributes
+		
+		
+		logmsg(LL_VERBOSE, "Sending wake-up sequence\n");
 		for (count = 0 ; count < 65 ; count++) {
 			if (write(obj->fd, &zero, 1) < 0) {
 				logmsg(LL_WARNING, "Unable to send wake-up sequence: %s\n", strerror(errno));
@@ -337,6 +343,7 @@ int telegram_parser_read_d0 (telegram_parser *obj)
 		usleep(2700000UL);	// Wait 2.7 seconds
 		
 		char signonseq[] = "/?!\r\n";
+		logmsg(LL_VERBOSE, "Sending sign-on sequence: %s\n", signonseq);
 		if (write(obj->fd, signonseq, strlen(signonseq)) < strlen(signonseq)) {
 			logmsg(LL_WARNING, "Unable to send sign-on sequence.\n");
 			return -3;
@@ -366,7 +373,7 @@ int telegram_parser_read_d0 (telegram_parser *obj)
 		
 		if (idx < obj->bufsize - 1) {
 			obj->buffer[idx + 1] = '\0';
-			logmsg(LL_VERBOSE, "Meter ID string received: %s\n", obj->buffer);
+			logmsg(LL_VERBOSE, "Meter ID string received, %lu bytes: %s\n", idx, obj->buffer);
 		}
 		
 		obj->mode = 0;
@@ -440,8 +447,8 @@ int telegram_parser_read_d0 (telegram_parser *obj)
 				}
 				
 				// Send ACK sequence
-				logmsg(LL_VERBOSE, "Sending ACK\n");
 				char ackseq[6] = {0x06, '0', obj->buffer[4], '0', '\r', '\n'};	// The third character in the ACK message is the baud rate ID
+				logmsg(LL_VERBOSE, "Sending ACK: \\x06 0 %c 0 \\r \\n\n", obj->buffer[4]);
 				write(obj->fd, ackseq, 6);
 				tcdrain(obj->fd);
 			}
@@ -451,7 +458,8 @@ int telegram_parser_read_d0 (telegram_parser *obj)
 			if (obj->mode != 'A') {
 				
 				// Change baud rate
-			
+				
+				usleep(300000UL);	// Wait 300 ms
 				logmsg(LL_VERBOSE, "Setting baud rate\n");
 				cfsetspeed(&(obj->newtio), baudrate);			// Update speed in termio-structure
 				tcsetattr(obj->fd, TCSANOW, &(obj->newtio));	// Set new terminal attributes
