@@ -14,12 +14,14 @@ DSMR (Dutch Smart Meter Requirements) is a standard for "smart" utility meters u
 
 In addition to the above interfaces, most DSMR-meters also have additional interfaces, such as an optical [IEC 62056-21](https://en.wikipedia.org/wiki/IEC_62056#IEC_62056-21) serial interface and an S0 (DIN 43864) pulse-output (which is usually not accessible, unfortunately).
 
+Several versions of the official DSMR P1 standard are included in the `doc/` directory of this repository. Also included there are [notes on the broader IEC 62056-21 standard](doc/IEC-62056-21-notes.md), on which the P1-standard is based.  
+
 
 ## The Parser
 
 This repository contains a parser for DSMR data-telegrams, based on the [Ragel state machine compiler](http://www.colm.net/open-source/ragel/), as well as the DSMR P1 specification documents (in `doc/`) and an example program in C for reading and parsing DSMR-data from a serial port in Linux (on any other POSIX system such as BSD or MacOS). To compile the Ragel parser and the example program, you need to install the [Ragel](http://www.colm.net/open-source/ragel/) state machine compiler (on Debian, Ubuntu and derivatives, simply do: `sudo apt-get install ragel`, on other systems you can `git clone git://colm.net/ragel.git`) and run `./make.sh`. In principle this parser can also be adapted for use on microcontrollers, although I haven't tried this yet. 
 
-The parser has been tested with example data from all currently known versions of DSMR (2.2, 3.0, 4.x and 5.0.2), and with real data from a Landis-Gyr DSMR 4.2 electricity meter, with a slave gas meter connected. This code is open-source under the Apache 2.0 licence.
+In addition to DSMR P1-telegrams, the parser can handle more general IEC 62056-21 telegram data, albeit with a very limited set of OBIS-objects, so that it can be used to obtain energy readings from many non-DSMR smart meters through the optical port. The parser has been tested with example data from all currently known versions of DSMR (2.2, 3.0, 4.x and 5.0.2), and with real data from a Landis-Gyr and Kaifa DSMR 4.2 electricity meters, in some cases with a slave gas meter connected. This code is open-source under the Apache 2.0 licence.
 
 
 ## Hardware specification
