@@ -1,30 +1,32 @@
 # IEC 62056-21 and derivatives (e.g. DSMR P1)
 
-**Levien van Zon**
+Levien van Zon (levien at gnuritas dot org)
 
 ### Hardware
 
-Optical "D0" reading/writing head for IEC 62056-21 can be ordered e.g. here:
+IEC 62056-21 smart meters are generally fitted with an optical "D0" interface, which is used to exchange data with the meter. An optical D0 reading/writing head for IEC 62056-21 can be ordered e.g. here:
 
    - <https://www.amazon.de/dp/B01B8N0ASY/ref=pe_3044161_185740101_TE_item>
 
 It uses infrared light (between 800 and 1000 nm) for signal transmission and reception, and is generally kept in place with a magnet. The cable should always point downward.
 
+The Dutch DSMR smart meters do have an optical "D0" interface, but it often seems to be disabled in software. Instead, these meters are fitted with a 5V inverted serial "P1" interface, which can only be used for reading data, in a text-based format that is derived from IEC 62056-21 mode D (see below).
+
 
 ### Serial connection
 
-The optical IEC 62056-21 interface initially operates at 300 baud, 7N1, even parity. It can be used for both reading and writing, although this should to be done at the same time (it is half-duplex).
+The optical IEC 62056-21 interface initially operates at 300 baud, 7N1, even parity. It can be used for both reading and writing, although this should noy be done at the same time (it is half-duplex).
 
 The DSMR P1 interface is read-only and uses a fixed baud rate of either 9600 baud, or 115200 baud for DSMR version >=4.0, and telegrams are sent every 1 or 10 seconds, as long as the RTS line is high.
 
-Both interfaces use an inverted serial signal relative to a "normal" serial port. This means that a binary 1 is represented by the electrical or optical signal being low (0V or no IR light), and a binary 0 is represented by +5V or an IR light signal. If you use a regular TTL serial port, extra hardware (e.g. an inverter IC or a transistor) is usually needed to invert the serial signal. RS232 also uses an inverted signal.
+Both interfaces use an inverted serial signal relative to a "normal" serial port. This means that a binary 1 is represented by the electrical or optical signal being low (0V or no IR light), and a binary 0 is represented by +5V or an IR light signal. If you use a regular TTL serial port, extra hardware (e.g. an inverter IC or a transistor) is usually needed to invert the serial signal. RS232 also uses an inverted signal, but operates in the voltage range -15V to +15V, so voltage conversion is usually needed if an RS232-interface is used as serial interface with a smart meter.
 
 
 ### Wake-up
 
 Especially battery powered meters require a wake-up sequence to be sent before further communication on the optical IEC 62056-21 interface. In most cases, sending a string of 65 zero-characters ('\0') should do the trick, followed by a pause of 1.5 seconds. If serial data is sent asynchronously, make sure you also wait for the data to be sent, which probably requires a total waiting time of 2.7 seconds after sending the wake-up string. 
 
-The DSMR P1 interface does not require wake-up, but it sonly sends data if the RTS pin is high (>4V).
+The DSMR P1 interface does not require wake-up, but it only sends data if the RTS pin is high (>4V).
 
 
 ### IEC 62056-21 Protocol modes
@@ -85,7 +87,7 @@ After sign-on (and in mode C/E, acknowledgement of readout mode), the meter will
 A telegram starts with '/', followed by an identifier string, as described above.
 Each subsequent line of a telegram is a data object, which starts with an object identifier, followed by a value, an optional unit and a line terminator "\r\n".Example: `"1-0:1.8.1(000581.161*kWh)\r\n"`
 
-The section up to the front boundary character '(' is the OBIS object identification (see below), which may have a maximum size of 16 characters, and may include anay character except "(", ")", "/" and "!".
+The section up to the front boundary character '(' is the OBIS object identification (see below), which may have a maximum size of 16 characters, and may include any character except "(", ")", "/" and "!".
 
 After the front boundary character '(' comes a value. This value may have a maximum size of 32 characters, or 128 in protocol mode C. All characters are allowed, except "(", " * ", ")", "/" and "!". A decimal point is used, rather than a decimal comma, and this counts in the number of characters.
 
