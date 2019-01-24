@@ -85,19 +85,22 @@ After sign-on (and in mode C/E, acknowledgement of readout mode), the meter will
 ### Telegrams
 
 A telegram starts with '/', followed by an identifier string, as described above.
+
+In IEC-62056-21, the subsequent data message starts with the STX frame start character 0x02, in DSMR P1 this is left out. 
 Each subsequent line of a telegram is a data object, which starts with an object identifier, followed by a value, an optional unit and a line terminator "\r\n".Example: `"1-0:1.8.1(000581.161*kWh)\r\n"`
 
-The section up to the front boundary character '(' is the OBIS object identification (see below), which may have a maximum size of 16 characters, and may include any character except "(", ")", "/" and "!".
+The section up to the front boundary character '(' is the OBIS object identification (see below), which may have a maximum size of 16 characters, and may include any printable character except "(", ")", "/" and "!".
 
-After the front boundary character '(' comes a value. This value may have a maximum size of 32 characters, or 128 in protocol mode C. All characters are allowed, except "(", " * ", ")", "/" and "!". A decimal point is used, rather than a decimal comma, and this counts in the number of characters.
+After the front boundary character '(' comes a value. This value may have a maximum size of 32 characters, or 128 in protocol mode C. All printable characters are allowed, except "(", " * ", ")", "/" and "!". A decimal point is used, rather than a decimal comma, and this counts in the number of characters.
 
-The value may be followed by a separator character '*' and a unit of maximum 16 characters, which may contain any character except "(", ")", "/" and "!". 
+The value may be followed by a separator character '*' and a unit of maximum 16 characters, which may contain any printable character except "(", ")", "/" and "!". 
 
-The data set ends with the read boundary character ')', and the line ending '\r\n'
+The data set ends with the read boundary character ')', and the line ending "\r\n"
 
 Some meters (e.g. the ISKRA MT171) seem to include the unit in the value (e.g.: `"1-0:1.8.1*255(0000000 kWh)\r\n"), which may be technically allowed but makes things harder to parse...
 
-The telegram ends with '!'. In DSMR P1 v4 and above, this is followed by a CRC16 over the preceding characters (from / to !, both inclusive). The CRC is 4 characters long: 2 bytes, hex-encoded, MSB first. After the optional CRC, one or two line-ends (\r\n) are usually sent. 
+The telegram ends with '!'. In DSMR P1 v4 and above, this is followed by a CRC16 over the preceding characters (from / to !, both inclusive). The CRC is 4 characters long: 2 bytes, hex-encoded, MSB first. After the optional CRC, one or two line-ends ("\r\n") are usually sent. 
+In the IEC-62056-21 data message, '!' is followed by "\r\n", the ETX frame end character 0x03 and a block check character BCC. The BCC is calculated over the bytes after STX up to and including the ETX byte, and is a [longitudinal redundancy check (LRC)](https://en.wikipedia.org/wiki/Longitudinal_redundancy_check).
 
 
 ### OBIS object identifiers
@@ -137,7 +140,7 @@ Common objects:
 
 After receiveing a telegram, the master should send an ACK (0x06) or NAK (0x15) byte to either confirm reception of the telegram, or request a re-send.
 
-The master may sign off explicitly, using a break sequence: SOH (start of header, 0x01) 'B' (exit command) '0' (complete sign-off) ETX (end of frame, 0x03) 'q' (Block check character, the calculated length parity over the characters of the data message beginning immediately after the STX up to the included ETX.)
+The master may sign off explicitly, using a break sequence: SOH (start of header, 0x01) 'B' (exit command) '0' (complete sign-off) ETX (end of frame, 0x03) 'q' (the BCC block check character, the calculated length parity over the characters of the data message beginning immediately after the STX up to the included ETX.)
 
 In the case of DSMR P1, telegrams are sent as long as the RTS line is high.
 
