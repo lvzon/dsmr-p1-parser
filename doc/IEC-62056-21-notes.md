@@ -100,7 +100,7 @@ The data set ends with the read boundary character ')', and the line ending "\r\
 Some meters (e.g. the ISKRA MT171) seem to include the unit in the value (e.g.: `"1-0:1.8.1*255(0000000 kWh)\r\n"), which may be technically allowed but makes things harder to parse...
 
 The telegram ends with '!'. In DSMR P1 v4 and above, this is followed by a CRC16 over the preceding characters (from / to !, both inclusive). The CRC is 4 characters long: 2 bytes, hex-encoded, MSB first. After the optional CRC, one or two line-ends ("\r\n") are usually sent. 
-In the IEC-62056-21 data message, '!' is followed by "\r\n", the ETX frame end character 0x03 and a block check character BCC. The BCC is calculated over the bytes after STX up to and including the ETX byte, and is a [longitudinal redundancy check (LRC)](https://en.wikipedia.org/wiki/Longitudinal_redundancy_check).
+In the IEC-62056-21 data message, '!' is followed by "\r\n", the ETX frame end character 0x03 and a block check character BCC. The BCC is calculated over the bytes after STX up to and including the ETX byte, and is an [XOR-based longitudinal redundancy check (LRC)](https://en.wikipedia.org/wiki/Longitudinal_redundancy_check). To calculate this BCC, take the first byte XOR 0xff, XOR this value with the second byte, and so forth up to and including the last byte, and XOR the final value with 0xff.
 
 
 ### OBIS object identifiers
