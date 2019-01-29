@@ -486,6 +486,7 @@ int telegram_parser_read_d0 (telegram_parser *obj)
 	// Attempt to read telegram data
 	
 	int telegram = 0;
+	unsigned long lrc_start = 0, lrc_end = 0;
 	
 	do {
 		// Read next byte
@@ -495,11 +496,18 @@ int telegram_parser_read_d0 (telegram_parser *obj)
 		} else if (len == 0) {
 			logmsg(LL_WARNING, "read() returned no bytes when reading telegram data\n");
 		} else {
-			if (obj->buffer[idx] == '!') {
+			if (obj->buffer[idx] == 0x02) {
+				logmsg(LL_VERBOSE, "STX found at offset %lu\n", (unsigned long)idx);
+				lrc_start = idx;	// LRC calculation starts after STX
+				idx--;				// We don't store STX, so overwrite it with the next byte
+			} else if (obj->buffer[idx] == '!') {
 				logmsg(LL_VERBOSE, "Telegram terminator found at offset %lu\n", (unsigned long)idx);
 				telegram = 1;
+			} else if (obj->buffer[idx] == 0x03) {
+				logmsg(LL_VERBOSE, "ETX found at offset %lu\n", (unsigned long)idx);
+				lrc_start = idx;	// LRC calculation ends at ETX (included)
 				break;
-			} else if (obj->buffer[idx] < 0x7e || obj->buffer[idx] < 0x7e) {
+			} else if (obj->buffer[idx] < 0x20 || obj->buffer[idx] > 0x7e) {
 				logmsg(LL_WARNING, "Non-printable byte (0x%02x) in telegram at index %lu\n", (int)(obj->buffer[idx]), idx);
 			}
 			idx++;
@@ -507,17 +515,41 @@ int telegram_parser_read_d0 (telegram_parser *obj)
 		
 	} while (len > 0 && idx < obj->bufsize);
 	
-	// TODO: it seems the telegram actually starts with 0x02, ends with 0x03 and that a CRC-byte is sent, 
-	// as "smartmeter-readout" uses the following pattern to match the telegram: ^\x02(.*!\r\n\x03)(.)$
+	uint8_t lrc_value = 0;
+	int lrc_error = 0;
+	uint8_t lrc_check = 0xff;
 	
 	if (!telegram) {
 		logmsg(LL_WARNING, "No full telegram found, received %lu bytes of data\n", idx);
 		// TODO: in mode C or E we could send a NAK and request a resend
+	} else {
+		if (lrc_start && lrc_end) {
+			// Try to read the redundancy check byte
+			len = read(obj->fd, &lrc_value, 1);
+			if (len <= 0) {
+				logmsg(LL_WARNING, "Unable to read LRC redundancy check byte\n");
+			} else {
+				unsigned long lrc_idx;
+				for (lrc_idx = lrc_start ; lrc_idx <= lrc_end ; lrc_idx++) {
+					lrc_check ^= obj->buffer[lrc_idx];	// XOR LRC value with next byte
+				}
+				lrc_check ^= 0xff;
+			}
+			logmsg(LL_VERBOSE, "LRC value received is %u, calculated is %u\n", (unsigned int)lrc_value, (unsigned int)lrc_check);
+			
+			if (lrc_value != lrc_check) {
+				logmsg(LL_WARNING, "LRC check failed, data may be invalid\n");
+				lrc_error = 1;
+			}
+		}
 	}
 	
 	// If a full telegram is received, we should send an ACK and sign off
 	
 	if (telegram && obj->terminal && obj->mode != 'P') {
+		
+		// TODO: send NAK if LRC is incorrect
+		
 		logmsg(LL_VERBOSE, "Sending ACK and signing off\n");
 		const char signoffseq[6] = {0x06, 0x01, 'B', '0', 0x03, 'q'};	// 0x06 is ACK, the other bytes are part of a break sequence (complete sign off)
 		write(obj->fd, signoffseq, 6);
@@ -538,5 +570,5 @@ int telegram_parser_read_d0 (telegram_parser *obj)
 		}
 	}
 	
-	return 0;
+	return lrc_error;
 }
