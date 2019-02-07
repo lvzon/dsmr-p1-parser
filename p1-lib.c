@@ -507,7 +507,7 @@ int telegram_parser_read_d0 (telegram_parser *obj)
 				logmsg(LL_VERBOSE, "ETX found at offset %lu\n", (unsigned long)idx);
 				lrc_end = idx;	// LRC calculation ends at ETX (included)
 				break;
-			} else if (obj->buffer[idx] < 0x20 || obj->buffer[idx] > 0x7e) {
+			} else if ((obj->buffer[idx] < 0x20 || obj->buffer[idx] > 0x7e) && obj->buffer[idx] != '\n' && obj->buffer[idx] != '\r') {
 				logmsg(LL_WARNING, "Non-printable byte (0x%02x) in telegram at index %lu\n", (int)(obj->buffer[idx]), idx);
 			}
 			idx++;
