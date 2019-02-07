@@ -9,6 +9,7 @@
 #include <errno.h>
 #include <string.h>
 #include <inttypes.h>
+#include <time.h>
 
 #include "logmsg.h"
 
@@ -573,6 +574,11 @@ int telegram_parser_read_d0 (telegram_parser *obj, int wakeup)
 			fwrite(obj->buffer, 1, obj->len, obj->dumpfile);
 			fflush(obj->dumpfile);
 		}
+	}
+	
+	if (! obj->data->timestamp) {
+		// Set current time, if no timestamp is reported by the meter
+		obj->data->timestamp = time(NULL);
 	}
 	
 	return lrc_error;
