@@ -303,7 +303,7 @@ int telegram_parser_open_d0 (telegram_parser *obj, char *infile, size_t bufsize,
 }
 
 
-int telegram_parser_read_d0 (telegram_parser *obj) 
+int telegram_parser_read_d0 (telegram_parser *obj, int wakeup) 
 {
 	
 	// Attempt to request data from an optical IEC 62056-21 "D0" interface and parse it
@@ -329,18 +329,21 @@ int telegram_parser_read_d0 (telegram_parser *obj)
 		logmsg(LL_VERBOSE, "Setting baud rate to 300 baud\n");
 		cfsetspeed(&(obj->newtio), B300);			// Update speed in termio-structure
 		tcsetattr(obj->fd, TCSANOW, &(obj->newtio));	// Set new terminal attributes
-		
-		
-		logmsg(LL_VERBOSE, "Sending wake-up sequence\n");
-		for (count = 0 ; count < 65 ; count++) {
-			if (write(obj->fd, &zero, 1) < 0) {
-				logmsg(LL_WARNING, "Unable to send wake-up sequence: %s\n", strerror(errno));
-				break;
+				
+		if (wakeup) {
+			logmsg(LL_VERBOSE, "Sending wake-up sequence\n");
+			for (count = 0 ; count < 65 ; count++) {
+				if (write(obj->fd, &zero, 1) < 0) {
+					logmsg(LL_WARNING, "Unable to send wake-up sequence: %s\n", strerror(errno));
+					break;
+				}
 			}
+			
+			tcdrain(obj->fd);	// Make sure the data in the output buffer is sent
+			usleep(2700000UL);	// Wait 2.7 seconds
 		}
 		
-		tcdrain(obj->fd);	// Make sure the data in the output buffer is sent
-		usleep(2700000UL);	// Wait 2.7 seconds
+		tcflush(obj->fd, TCIFLUSH);	// Flush any unread data that may still be in the input buffer
 		
 		char signonseq[] = "/?!\r\n";
 		logmsg(LL_VERBOSE, "Sending sign-on sequence: %s\n", signonseq);
@@ -524,10 +527,10 @@ int telegram_parser_read_d0 (telegram_parser *obj)
 		// TODO: in mode C or E we could send a NAK and request a resend
 	} else {
 		if (lrc_start && lrc_end) {
-			// Try to read the redundancy check byte
+			// Try to read the BCC block check byte
 			len = read(obj->fd, &lrc_value, 1);
 			if (len <= 0) {
-				logmsg(LL_WARNING, "Unable to read LRC redundancy check byte\n");
+				logmsg(LL_WARNING, "Unable to read BCC block check character\n");
 			} else {
 				unsigned long lrc_idx;
 				for (lrc_idx = lrc_start ; lrc_idx <= lrc_end ; lrc_idx++) {
@@ -535,14 +538,14 @@ int telegram_parser_read_d0 (telegram_parser *obj)
 				}
 				lrc_check ^= 0xff;
 			}
-			logmsg(LL_VERBOSE, "LRC value received is %u, calculated is %u\n", (unsigned int)lrc_value, (unsigned int)lrc_check);
+			logmsg(LL_VERBOSE, "BCC received is %u, LRC calculated is %u\n", (unsigned int)lrc_value, (unsigned int)lrc_check);
 			
 			if (lrc_value != lrc_check) {
-				logmsg(LL_WARNING, "LRC check failed, data may be invalid\n");
+				logmsg(LL_WARNING, "BCC/LRC check failed, data may be invalid\n");
 				lrc_error = 1;
 			}
 		} else {
-			logmsg(LL_WARNING, "LRC range invalid: %lu - %lu\n", lrc_start, lrc_end);
+			logmsg(LL_WARNING, "LRC block range invalid: %lu - %lu\n", lrc_start, lrc_end);
 		}
 	}
 	

@@ -78,7 +78,9 @@ long long int TST_to_time (struct parser *fsm, int arg_idx) {
 	}
 	
 	action crc { 
-		logmsg(LL_VERBOSE, "CRC: 0x%x\n", (unsigned int)fsm->arg[0]); 
+		if (fsm->arg[0]) {
+			logmsg(LL_VERBOSE, "CRC: 0x%x\n", (unsigned int)fsm->arg[0]); 
+		}
 		fsm->crc16 = fsm->arg[0]; 
 	}
 	

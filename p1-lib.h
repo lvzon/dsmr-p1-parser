@@ -45,4 +45,4 @@ void telegram_parser_close (telegram_parser *obj);
 int telegram_parser_read (telegram_parser *obj);
 
 int telegram_parser_open_d0 (telegram_parser *obj, char *infile, size_t bufsize, int timeout, char *dumpfile);
-int telegram_parser_read_d0 (telegram_parser *obj);
+int telegram_parser_read_d0 (telegram_parser *obj, int wakeup);

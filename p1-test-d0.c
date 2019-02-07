@@ -28,7 +28,7 @@ int main (int argc, char **argv)
 		
 	do {
 		
-		telegram_parser_read_d0(&parser);
+		telegram_parser_read_d0(&parser, 1);
 		// TODO: figure out how to handle errors, time-outs, etc.
 			
 	} while (parser.terminal);		// If we're connected to a serial device, keep reading, otherwise exit
