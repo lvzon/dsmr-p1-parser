@@ -505,7 +505,7 @@ int telegram_parser_read_d0 (telegram_parser *obj)
 				telegram = 1;
 			} else if (obj->buffer[idx] == 0x03) {
 				logmsg(LL_VERBOSE, "ETX found at offset %lu\n", (unsigned long)idx);
-				lrc_start = idx;	// LRC calculation ends at ETX (included)
+				lrc_end = idx;	// LRC calculation ends at ETX (included)
 				break;
 			} else if (obj->buffer[idx] < 0x20 || obj->buffer[idx] > 0x7e) {
 				logmsg(LL_WARNING, "Non-printable byte (0x%02x) in telegram at index %lu\n", (int)(obj->buffer[idx]), idx);
@@ -541,6 +541,8 @@ int telegram_parser_read_d0 (telegram_parser *obj)
 				logmsg(LL_WARNING, "LRC check failed, data may be invalid\n");
 				lrc_error = 1;
 			}
+		} else {
+			logmsg(LL_WARNING, "LRC range invalid: %lu - %lu\n", lrc_start, lrc_end);
 		}
 	}
 	
