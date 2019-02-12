@@ -36,9 +36,14 @@ typedef struct telegram_parser_struct {
 	size_t len;				// Telegram length
 	uint8_t *buffer;		// Telegram buffer pointer
 	
+	char mode;				// Meter mode (A, B, C, D, E for IEC, or P for DSMR P1)
+	
 } telegram_parser;
 
 
 int telegram_parser_open (telegram_parser *obj, char *infile, size_t bufsize, int timeout, char *dumpfile);
 void telegram_parser_close (telegram_parser *obj);
 int telegram_parser_read (telegram_parser *obj);
+
+int telegram_parser_open_d0 (telegram_parser *obj, char *infile, size_t bufsize, int timeout, char *dumpfile);
+int telegram_parser_read_d0 (telegram_parser *obj, int wakeup);
