@@ -488,7 +488,7 @@ int main (int argc, char **argv)
 		
 		if (optical) {
 			
-			sleep(10);
+			sleep(delay);
 			result = telegram_parser_read_d0(&parser, wakeup);
 			
 		} else {
