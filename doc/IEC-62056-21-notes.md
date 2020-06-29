@@ -74,8 +74,8 @@ The above baud rate identifier values are used when a meter operates in protocol
    F.  9600 Bd
    G. 19200 Bd
 
-The rest of the identification string is the model identifier, up to "\r\n" or (in mode E) an optional '\'-character, which acts as sequence-delimiter and may be followed by mode-information, e.g.: `/ISk5\2MT382-1000`
-In this case, the character following `\` is the mode identifier, which may be '2' for binary mode (HDLC). The model identifier (with optional mode information) may be up to 16 bytes long.
+The rest of the identification string is the model identifier, up to "\r\n" or (in mode E) an optional `'\'`-character, which acts as sequence-delimiter and may be followed by mode-information, e.g.: `/ISk5\2MT382-1000`
+In this case, the character following `\` is the mode identifier, which may be '2' for binary mode (which is based on [HDLC](https://en.wikipedia.org/wiki/High-Level_Data_Link_Control)). The model identifier (with optional mode information) may be up to 16 bytes long.
 
 If the baud rate identifier is valid for mode C or E, and the optical interface is used, the communication rate can/should be updated. To do this, send an acknowledgement message (still at 300 baud), which starts with an ACK byte (0x06), followed by a protocol control character (use '0' for a normal protocol procedure), the baud rate identifier (see above), a mode control character (use '0' to set the mode to reading data) and "\r\n". Wait 300 ms before changing the baud rate. 
 
@@ -97,7 +97,7 @@ The value may be followed by a separator character '*' and a unit of maximum 16 
 
 The data set ends with the read boundary character ')', and the line ending "\r\n"
 
-Some meters (e.g. the ISKRA MT171) seem to include the unit in the value (e.g.: `"1-0:1.8.1*255(0000000 kWh)\r\n"), which may be technically allowed but makes things harder to parse...
+Some meters (e.g. the ISKRA MT171) seem to include the unit in the value (e.g.: `"1-0:1.8.1*255(0000000 kWh)\r\n"`), which may be technically allowed but makes things harder to parse...
 
 The telegram ends with '!'. In DSMR P1 v4 and above, this is followed by a CRC16 over the preceding characters (from / to !, both inclusive). The CRC is 4 characters long: 2 bytes, hex-encoded, MSB first. After the optional CRC, one or two line-ends ("\r\n") are usually sent. 
 In the IEC-62056-21 data message, '!' is followed by "\r\n", the ETX frame end character 0x03 and a block check character BCC. The BCC is calculated over the bytes after STX up to and including the ETX byte, and is an [XOR-based longitudinal redundancy check (LRC)](https://en.wikipedia.org/wiki/Longitudinal_redundancy_check). To calculate this BCC, take the first byte XOR 0xff, XOR this value with the second byte, and so forth up to and including the last byte, and XOR the final value with 0xff.
