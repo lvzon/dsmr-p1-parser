@@ -18,6 +18,33 @@
 #include "p1-lib.h"
 
 
+void fix_total_energy (struct dsmr_data_struct	*data)
+{
+	// Make sure that the total energy counters are nonzero (calculate them if needed)
+	 
+	if (data == NULL)
+		return;
+		
+	if (data->E_in[0] > 0 || data->E_out[0] > 0)
+		return;		// Total counters are probably already valid
+		
+	int tariff;
+	double E_in_total = 0, E_out_total = 0;
+	
+	// Sum the tariff counters to get the tariff-independant totals
+	
+	for (tariff = 1 ; tariff <= MAX_TARIFFS ; tariff++) {
+		E_in_total += data->E_in[tariff];
+		E_out_total += data->E_out[tariff];
+	}
+	
+	// Store totals as tariff 0
+	
+	data->E_in[0] = E_in_total;
+	data->E_out[0] = E_out_total;
+}
+
+
 uint16_t crc_telegram (const uint8_t *data, unsigned int length)
 {
 	// Calculate the CRC16 of a telegram, for verification
@@ -282,7 +309,9 @@ int telegram_parser_read (telegram_parser *obj)
 		tcflush(obj->fd, TCIFLUSH);				// Flush any data still left in the input buffer, to avoid confusing the parsers
 		tcsetattr(obj->fd, TCSANOW, &(obj->newtio));	// Set new terminal attributes
 	}
-
+	
+	fix_total_energy(obj->data);
+	
 	// TODO: report more errors
 	
 	if (obj->parser.crc16 && obj->parser.crc16 != crc) {
@@ -592,6 +621,8 @@ int telegram_parser_read_d0 (telegram_parser *obj, int wakeup)
 		// Set current time, if no timestamp is reported by the meter
 		obj->data->timestamp = time(NULL);
 	}
+	
+	fix_total_energy(obj->data);
 	
 	return lrc_error;
 }
