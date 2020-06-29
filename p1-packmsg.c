@@ -21,6 +21,10 @@ char buffer[BUFSIZE];
 
 int phases = 1;
 
+// Flag to determine if we should report power values
+
+int report_power = 1;
+
 // Global counter for last gas meter value
 
 double last_gas_count = 0;
@@ -183,17 +187,23 @@ int send_header (struct dsmr_data_struct *data, FILE *out) {
 	mpack_start_array(&writer, 3);
 	mpack_write_cstr(&writer, "DVARS");
 	mpack_write_u8(&writer, 1);
-	if (phases == 3) {
-		mpack_start_array(&writer, 5);
+	if (report_power) {
+		if (phases == 3) {
+			mpack_start_array(&writer, 5);
+		} else {
+			mpack_start_array(&writer, 3);
+		}
+		mpack_write_cstr(&writer, "E_in");
+		mpack_write_cstr(&writer, "E_out");
+		mpack_write_cstr(&writer, "P_L1");
+		if (phases == 3) {
+			mpack_write_cstr(&writer, "P_L2");
+			mpack_write_cstr(&writer, "P_L3");
+		}
 	} else {
-		mpack_start_array(&writer, 3);
-	}
-	mpack_write_cstr(&writer, "E_in");
-	mpack_write_cstr(&writer, "E_out");
-	mpack_write_cstr(&writer, "P_L1");
-	if (phases == 3) {
-		mpack_write_cstr(&writer, "P_L2");
-		mpack_write_cstr(&writer, "P_L3");
+		mpack_start_array(&writer, 2);
+		mpack_write_cstr(&writer, "E_in");
+		mpack_write_cstr(&writer, "E_out");
 	}
 	mpack_finish_array(&writer);
 	mpack_finish_array(&writer);
@@ -280,12 +290,16 @@ int send_values (struct dsmr_data_struct *data, FILE *out) {
 	mpack_write_cstr(&writer, "DVALS");
 	mpack_write_u8(&writer, 1);
 	mpack_write_u32(&writer, data->timestamp);
-	if (phases == 3) {
-		mpack_start_array(&writer, 5);
+	if (report_power) {
+		if (phases == 3) {
+			mpack_start_array(&writer, 5);
+		} else {
+			mpack_start_array(&writer, 3);
+		}
 	} else {
-		mpack_start_array(&writer, 3);
+		mpack_start_array(&writer, 2);
 	}
-	
+
 	// TODO: write 64-bit integers of total Wh-energy counters, without casting from double
 	// Also, correctly handle units, rather than assuming hard-coded units
 	
@@ -305,10 +319,12 @@ int send_values (struct dsmr_data_struct *data, FILE *out) {
 	
 	mpack_write_u32(&writer, E_in_total);
 	mpack_write_u32(&writer, E_out_total);
-	mpack_write_i16(&writer, (data->P_in[0] - data->P_out[0]) * 1000);
-	if (phases == 3) {
-		mpack_write_i16(&writer, (data->P_in[1] - data->P_out[1]) * 1000);
-		mpack_write_i16(&writer, (data->P_in[2] - data->P_out[2]) * 1000);
+	if (report_power) {
+		mpack_write_i16(&writer, (data->P_in[0] - data->P_out[0]) * 1000);
+		if (phases == 3) {
+			mpack_write_i16(&writer, (data->P_in[1] - data->P_out[1]) * 1000);
+			mpack_write_i16(&writer, (data->P_in[2] - data->P_out[2]) * 1000);
+		}
 	}
 	
 	mpack_finish_array(&writer);
@@ -387,28 +403,56 @@ int main (int argc, char **argv)
 	char *infile, *outfile = NULL;
 	
 	if (argc < 4 && argc != 3) {
-		logmsg(LL_NORMAL, "Usage: %s <input file or device> [<server> <port>] [<outfile>]\n", argv[0]);
+		logmsg(LL_NORMAL, "Usage: %s [options] <input file or device> [<server> <port>] [<outfile>]\n", argv[0]);
 		exit(1);
 	}
 	
-	infile = argv[1];
+	int argstart = 1;
+	int optical = 0;
+	int wakeup = 0;
+	int force_power = 0;
+	long delay = 10;
+	
+	while (argv[argstart][0] == '-' && argstart < argc) {
+		if (strcmp(argv[argstart], "--optical") == 0) {
+			optical = 1;
+		} else if (strcmp(argv[argstart], "--wakeup") == 0) {
+			wakeup = 1;
+		} else if (strcmp(argv[argstart], "--force-power") == 0) {
+			force_power = 1;
+		} else if (strcmp(argv[argstart], "--delay") == 0) {
+			delay = strtol(argv[argstart + 1], NULL, 0);
+			if (delay >= 0) {
+				argstart++;
+			} else {
+				delay = 10;
+			}
+		}
+		argstart++;
+	}
+	
+	infile = argv[argstart];
 
-    if (argc == 3) {
-        outfile = argv[2];
+    if (argc - argstart == 2) {
+        outfile = argv[argstart + 1];
     } else {
-	    server = argv[2];
-	    port = argv[3];
-        if (argc == 5) {
-            outfile = argv[4];
+	    server = argv[argstart + 1];
+	    port = argv[argstart + 2];
+        if (argc - argstart == 4) {
+            outfile = argv[argstart + 3];
         }
 	}
 
 
 	telegram_parser parser;
 	
-	telegram_parser_open(&parser, infile, 0, 0, NULL);
-	telegram_parser_read(&parser);
-
+	if (optical) {
+		telegram_parser_open_d0(&parser, infile, 0, 0, NULL);
+		telegram_parser_read_d0(&parser, 1);
+	} else {
+		telegram_parser_open(&parser, infile, 0, 0, NULL);
+		telegram_parser_read(&parser);
+	}
 	// TODO: Exit on errors, time-outs, etc.
 	
 	struct dsmr_data_struct *data = parser.data;
@@ -417,6 +461,12 @@ int main (int argc, char **argv)
 	
 	if (data->V[1] > 0 || data->V[2] > 0 || data->P_in[1] > 0 || data->P_in[2] > 0 || data->P_out[1] > 0 || data->P_out[2] > 0) {
 		phases = 3;
+	}
+	
+	// Assume power-measurements are not reported if all power values are zero
+	
+	if (force_power == 0 && data->P_in[0] == 0 && data->P_in[1] == 0 && data->P_in[2] == 0 && data->P_out[0] == 0 && data->P_out[1] == 0 && data->P_out[2] == 0) {
+		report_power = 0;
 	}
 	
 	// Dump messages to file if specified
@@ -434,7 +484,17 @@ int main (int argc, char **argv)
 	
 	do {
 		
-		int result = telegram_parser_read(&parser);
+		int result;
+		
+		if (optical) {
+			
+			sleep(10);
+			result = telegram_parser_read_d0(&parser, wakeup);
+			
+		} else {
+			
+			result = telegram_parser_read(&parser);
+		}
 		// TODO: handle errors, time-outs, etc.
 		
 		if (result == 0) {	// Ignore CRC-errors etc.
