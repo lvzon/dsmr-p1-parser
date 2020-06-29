@@ -25,6 +25,10 @@ int phases = 1;
 
 int report_power = 1;
 
+// Global counter for last electricity meter value
+
+unsigned long long last_E_in_total = 0, last_E_out_total = 0;
+	
 // Global counter for last gas meter value
 
 double last_gas_count = 0;
@@ -281,56 +285,58 @@ int send_values (struct dsmr_data_struct *data, FILE *out) {
 	mpack_writer_t writer;
 
 	int result = -1;
+	int new_data = 0;
 	
 	mpack_writer_init(&writer, mpackdata, BUFSIZE);
 	
-	// Write variable values for device 1
-	
-	mpack_start_array(&writer, 4);
-	mpack_write_cstr(&writer, "DVALS");
-	mpack_write_u8(&writer, 1);
-	mpack_write_u32(&writer, data->timestamp);
-	if (report_power) {
-		if (phases == 3) {
-			mpack_start_array(&writer, 5);
-		} else {
-			mpack_start_array(&writer, 3);
-		}
-	} else {
-		mpack_start_array(&writer, 2);
-	}
-
-	// TODO: write 64-bit integers of total Wh-energy counters, without casting from double
-	// Also, correctly handle units, rather than assuming hard-coded units
-	
 	unsigned long long E_in_total, E_out_total;
 	
-	if (data->E_in[0] > 0) {
-		 E_in_total = data->E_in[0] * 1000;
-	} else {
-		 E_in_total = (data->E_in[1] + data->E_in[2]) * 1000;
-	}
+	E_in_total = data->E_in[0] * 1000;
+	E_out_total = data->E_out[0] * 1000;
 	
-	if (data->E_out[0] > 0) {
-		 E_out_total = data->E_out[0] * 1000;
-	} else {
-		 E_out_total = (data->E_out[1] + data->E_out[2]) * 1000;
-	}
-	
-	mpack_write_u32(&writer, E_in_total);
-	mpack_write_u32(&writer, E_out_total);
-	if (report_power) {
-		mpack_write_i16(&writer, (data->P_in[0] - data->P_out[0]) * 1000);
-		if (phases == 3) {
-			mpack_write_i16(&writer, (data->P_in[1] - data->P_out[1]) * 1000);
-			mpack_write_i16(&writer, (data->P_in[2] - data->P_out[2]) * 1000);
+	if (report_power || (E_in_total != last_E_in_total && E_out_total != last_E_out_total)) {	// Only report electricity values if there's something new to report
+		
+		new_data = 1;
+		
+		// Write variable values for device 1
+		
+		mpack_start_array(&writer, 4);
+		mpack_write_cstr(&writer, "DVALS");
+		mpack_write_u8(&writer, 1);
+		mpack_write_u32(&writer, data->timestamp);
+		if (report_power) {
+			if (phases == 3) {
+				mpack_start_array(&writer, 5);
+			} else {
+				mpack_start_array(&writer, 3);
+			}
+		} else {
+			mpack_start_array(&writer, 2);
 		}
-	}
 	
-	mpack_finish_array(&writer);
-	mpack_finish_array(&writer);
+		// TODO: write 64-bit integers of total Wh-energy counters, without casting from double
+		// Also, correctly handle units, rather than assuming hard-coded units
+		
+		mpack_write_u32(&writer, E_in_total);
+		mpack_write_u32(&writer, E_out_total);
+		if (report_power) {
+			mpack_write_i16(&writer, (data->P_in[0] - data->P_out[0]) * 1000);
+			if (phases == 3) {
+				mpack_write_i16(&writer, (data->P_in[1] - data->P_out[1]) * 1000);
+				mpack_write_i16(&writer, (data->P_in[2] - data->P_out[2]) * 1000);
+			}
+		}
+		
+		mpack_finish_array(&writer);
+		mpack_finish_array(&writer);
+		
+		last_E_in_total = E_in_total;
+		last_E_out_total = E_out_total;
+	}
 	
 	if (last_gas_count != data->dev_counter[0]) {
+		
+		new_data = 1;
 		
 		// Write variable values for device 2
 		
@@ -356,6 +362,11 @@ int send_values (struct dsmr_data_struct *data, FILE *out) {
 	} else {
 		size = mpack_writer_buffer_used(&writer);
 		printf("Wrote %lu bytes of total msgpack data to buffer\n", size);
+	}
+	
+	if (!new_data) {
+		// No new data to report, so don't bother
+		return 0;
 	}
 	
 	// Dump messages to file
