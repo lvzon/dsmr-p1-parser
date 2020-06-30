@@ -154,48 +154,53 @@ int send_header (struct dsmr_data_struct *data, FILE *out) {
 	mpack_finish_map(&writer);
 	mpack_finish_array(&writer);
 	
-	// Net power on phase 1
-	mpack_start_array(&writer, 3);
-	mpack_write_cstr(&writer, "VAR");
-	mpack_write_cstr(&writer, "P_L1");
-	mpack_start_map(&writer, 1);
-	mpack_write_cstr(&writer, "unit");
-	mpack_write_cstr(&writer, "W");
-	mpack_finish_map(&writer);
-	mpack_finish_array(&writer);
-
-	if (phases > 1) {
-		
-		// Net power on phase 2
+	
+	if (report_power) {
+		// Net power on phase 1
 		mpack_start_array(&writer, 3);
 		mpack_write_cstr(&writer, "VAR");
-		mpack_write_cstr(&writer, "P_L2");
+		mpack_write_cstr(&writer, "P_L1");
 		mpack_start_map(&writer, 1);
 		mpack_write_cstr(&writer, "unit");
 		mpack_write_cstr(&writer, "W");
 		mpack_finish_map(&writer);
 		mpack_finish_array(&writer);
-		
-		// Net power on phase 3
+	
+		if (phases > 1) {
+			
+			// Net power on phase 2
+			mpack_start_array(&writer, 3);
+			mpack_write_cstr(&writer, "VAR");
+			mpack_write_cstr(&writer, "P_L2");
+			mpack_start_map(&writer, 1);
+			mpack_write_cstr(&writer, "unit");
+			mpack_write_cstr(&writer, "W");
+			mpack_finish_map(&writer);
+			mpack_finish_array(&writer);
+			
+			// Net power on phase 3
+			mpack_start_array(&writer, 3);
+			mpack_write_cstr(&writer, "VAR");
+			mpack_write_cstr(&writer, "P_L3");
+			mpack_start_map(&writer, 1);
+			mpack_write_cstr(&writer, "unit");
+			mpack_write_cstr(&writer, "W");
+			mpack_finish_map(&writer);
+			mpack_finish_array(&writer);
+		}
+	}
+	
+	if (report_gas) {
+		// Gas imported
 		mpack_start_array(&writer, 3);
 		mpack_write_cstr(&writer, "VAR");
-		mpack_write_cstr(&writer, "P_L3");
+		mpack_write_cstr(&writer, "gas_in");
 		mpack_start_map(&writer, 1);
 		mpack_write_cstr(&writer, "unit");
-		mpack_write_cstr(&writer, "W");
+		mpack_write_cstr(&writer, "m^3");
 		mpack_finish_map(&writer);
 		mpack_finish_array(&writer);
 	}
-	
-	// Gas imported
-	mpack_start_array(&writer, 3);
-	mpack_write_cstr(&writer, "VAR");
-	mpack_write_cstr(&writer, "gas_in");
-	mpack_start_map(&writer, 1);
-	mpack_write_cstr(&writer, "unit");
-	mpack_write_cstr(&writer, "m^3");
-	mpack_finish_map(&writer);
-	mpack_finish_array(&writer);
 	
 	// Specify variables for device 1
 	
@@ -223,15 +228,17 @@ int send_header (struct dsmr_data_struct *data, FILE *out) {
 	mpack_finish_array(&writer);
 	mpack_finish_array(&writer);
 	
-	// Specify variables for device 2
-	
-	mpack_start_array(&writer, 3);
-	mpack_write_cstr(&writer, "DVARS");
-	mpack_write_u8(&writer, 2);
-	mpack_start_array(&writer, 1);
-	mpack_write_cstr(&writer, "gas_in");
-	mpack_finish_array(&writer);
-	mpack_finish_array(&writer);
+	if (report_gas) {
+		// Specify variables for device 2
+		
+		mpack_start_array(&writer, 3);
+		mpack_write_cstr(&writer, "DVARS");
+		mpack_write_u8(&writer, 2);
+		mpack_start_array(&writer, 1);
+		mpack_write_cstr(&writer, "gas_in");
+		mpack_finish_array(&writer);
+		mpack_finish_array(&writer);
+	}
 	
 	// Write data to output stream	
 	// We can either send the data manually after destroying the writer,
