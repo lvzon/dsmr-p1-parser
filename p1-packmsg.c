@@ -17,6 +17,10 @@
 
 char buffer[BUFSIZE];
 
+// Dataset name
+
+char *set_name = "DSMR_P1";
+
 // Number of phases
 
 int phases = 1;
@@ -97,7 +101,7 @@ int send_header (struct dsmr_data_struct *data, FILE *out) {
 	
 	mpack_start_array(&writer, 2);
 	mpack_write_cstr(&writer, "SET");
-	mpack_write_cstr(&writer, "DSMR_P1");
+	mpack_write_cstr(&writer, set_name);
 	mpack_finish_array(&writer);
 
 	// Start device map
@@ -452,13 +456,16 @@ int main (int argc, char **argv)
 			force_power = 1;
 		} else if (strcmp(argv[argstart], "--force-gas") == 0) {
 			report_gas = 1;
-		} else if (strcmp(argv[argstart], "--delay") == 0) {
+		} else if (strcmp(argv[argstart], "--delay") == 0 && argc >= argstart + 1) {
 			delay = strtol(argv[argstart + 1], NULL, 0);
 			if (delay >= 0) {
 				argstart++;
 			} else {
 				delay = 10;
 			}
+		} else if (strcmp(argv[argstart], "--set") == 0 && argc >= argstart + 1) {
+			set_name = argv[argstart + 1];
+			argstart++;
 		}
 		argstart++;
 	}
