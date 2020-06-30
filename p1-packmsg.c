@@ -25,6 +25,10 @@ int phases = 1;
 
 int report_power = 1;
 
+// Flag to determine if we should report gas values
+
+int report_gas = 1;
+
 // Global counter for last electricity meter value
 
 unsigned long long last_E_in_total = 0, last_E_out_total = 0;
@@ -96,12 +100,17 @@ int send_header (struct dsmr_data_struct *data, FILE *out) {
 	mpack_write_cstr(&writer, "DSMR_P1");
 	mpack_finish_array(&writer);
 
-	// TODO: determine actual number of devices
-	
 	// Start device map
 	mpack_start_array(&writer, 2);
 	mpack_write_cstr(&writer, "DEVS");
-	mpack_start_map(&writer, 2);
+	
+	// TODO: determine actual number of devices and validity of gas meter ID
+		
+	if (report_gas) {
+		mpack_start_map(&writer, 2);
+	} else {
+		mpack_start_map(&writer, 1);
+	}
 	
 	// Device 1 is the electricity meter
 	mpack_write_u8(&writer, 1);
@@ -110,12 +119,14 @@ int send_header (struct dsmr_data_struct *data, FILE *out) {
 	mpack_write_cstr(&writer, data->equipment_id);
 	mpack_finish_map(&writer);
 	
-	// Device 2 is the gas meter
-	mpack_write_u8(&writer, 2);
-	mpack_start_map(&writer, 1);
-	mpack_write_cstr(&writer, "id");
-	mpack_write_cstr(&writer, data->dev_id[0]);
-	mpack_finish_map(&writer);
+	if (report_gas) {
+		// Device 2 is the gas meter
+		mpack_write_u8(&writer, 2);
+		mpack_start_map(&writer, 1);
+		mpack_write_cstr(&writer, "id");
+		mpack_write_cstr(&writer, data->dev_id[0]);
+		mpack_finish_map(&writer);
+	}
 	
 	// End device map
 	mpack_finish_map(&writer);
@@ -334,7 +345,7 @@ int send_values (struct dsmr_data_struct *data, FILE *out) {
 		last_E_out_total = E_out_total;
 	}
 	
-	if (last_gas_count != data->dev_counter[0]) {
+	if (report_gas && last_gas_count != data->dev_counter[0]) {
 		
 		new_data = 1;
 		
@@ -427,10 +438,13 @@ int main (int argc, char **argv)
 	while (argv[argstart][0] == '-' && argstart < argc) {
 		if (strcmp(argv[argstart], "--optical") == 0) {
 			optical = 1;
+			report_gas = 0;
 		} else if (strcmp(argv[argstart], "--wakeup") == 0) {
 			wakeup = 1;
 		} else if (strcmp(argv[argstart], "--force-power") == 0) {
 			force_power = 1;
+		} else if (strcmp(argv[argstart], "--force-gas") == 0) {
+			report_gas = 1;
 		} else if (strcmp(argv[argstart], "--delay") == 0) {
 			delay = strtol(argv[argstart + 1], NULL, 0);
 			if (delay >= 0) {
