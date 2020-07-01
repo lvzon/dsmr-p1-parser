@@ -316,7 +316,11 @@ int send_values (struct dsmr_data_struct *data, FILE *out) {
 	E_in_total = data->E_in[0] * 1000;
 	E_out_total = data->E_out[0] * 1000;
 	
-	if (report_power || (E_in_total != last_E_in_total && E_out_total != last_E_out_total)) {	// Only report electricity values if there's something new to report
+	if (report_power || E_in_total != last_E_in_total || E_out_total != last_E_out_total) {	// Only report electricity values if there's something new to report
+		
+		if (!report_power) {
+			logmsg(LL_VERBOSE, "Found new data to send, E_in_total = %llu (previous: %llu), E_out_total = %llu (previous: %llu)\n", E_in_total, last_E_in_total, E_out_total, last_E_out_total);
+		}
 		
 		new_data = 1;
 		
@@ -354,6 +358,9 @@ int send_values (struct dsmr_data_struct *data, FILE *out) {
 		
 		last_E_in_total = E_in_total;
 		last_E_out_total = E_out_total;
+		
+	} else {
+		logmsg(LL_VERBOSE, "No new data to send, E_in_total = %llu (previous: %llu), E_out_total = %llu (previous: %llu)\n", E_in_total, last_E_in_total, E_out_total, last_E_out_total);
 	}
 	
 	if (report_gas && last_gas_count != data->dev_counter[0]) {
