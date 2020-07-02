@@ -249,11 +249,10 @@ int send_header (struct dsmr_data_struct *data, FILE *out) {
 	// or define a flush-function with mpack_writer_set_flush()  
 	
 	if (mpack_writer_destroy(&writer) != mpack_ok) {
-		fprintf(stderr, "An error occurred encoding the data!\n");
+		logmsg(LL_ERROR, "An error occurred while encoding the header data!\n")
 		exit(1);
 	} else {
 		size = mpack_writer_buffer_used(&writer);
-		printf("Wrote %lu bytes of total msgpack data\n", size);
 	}
 	
 
@@ -277,11 +276,16 @@ int send_header (struct dsmr_data_struct *data, FILE *out) {
     			// Send header message to server    		
     			result = send_data(mpackdata, size);
     			
-    			if (result < 0)
+    			if (result < 0) {
+					logmsg(LL_WARN, "Failed to send header\n");
     				sleep(1);
+    			} else {
+			        logmsg(LL_NORMAL, "Header successfully sent (%lu bytes)\n", size);
+				}
     			
     		} else {
     			
+				logmsg(LL_WARN, "Failed to open server socket\n");
     			sleep(1);
     		}
     		
@@ -319,7 +323,7 @@ int send_values (struct dsmr_data_struct *data, FILE *out) {
 	if (report_power || E_in_total != last_E_in_total || E_out_total != last_E_out_total) {	// Only report electricity values if there's something new to report
 		
 		if (!report_power) {
-			logmsg(LL_VERBOSE, "Found new data to send, E_in_total = %llu (previous: %llu), E_out_total = %llu (previous: %llu)\n", E_in_total, last_E_in_total, E_out_total, last_E_out_total);
+			logmsg(LL_NORMAL, "Found new data to send, E_in_total = %llu (previous: %llu), E_out_total = %llu (previous: %llu)\n", E_in_total, last_E_in_total, E_out_total, last_E_out_total);
 		}
 		
 		new_data = 1;
@@ -360,7 +364,7 @@ int send_values (struct dsmr_data_struct *data, FILE *out) {
 		last_E_out_total = E_out_total;
 		
 	} else {
-		logmsg(LL_VERBOSE, "No new data to send, E_in_total = %llu (previous: %llu), E_out_total = %llu (previous: %llu)\n", E_in_total, last_E_in_total, E_out_total, last_E_out_total);
+		logmsg(LL_NORMAL, "No new data to send, E_in_total = %llu (previous: %llu), E_out_total = %llu (previous: %llu)\n", E_in_total, last_E_in_total, E_out_total, last_E_out_total);
 	}
 	
 	if (report_gas && last_gas_count != data->dev_counter[0]) {
@@ -386,17 +390,18 @@ int send_values (struct dsmr_data_struct *data, FILE *out) {
 	// or define a flush-function with mpack_writer_set_flush()  
 	
 	if (mpack_writer_destroy(&writer) != mpack_ok) {
-		fprintf(stderr, "An error occurred encoding the data!\n");
+		logmsg(LL_ERROR, "An error occurred while encoding the DVALS data!\n")
 		return -2;
 	} else {
 		size = mpack_writer_buffer_used(&writer);
-		printf("Wrote %lu bytes of total msgpack data to buffer\n", size);
 	}
 	
 	if (!new_data) {
 		// No new data to report, so don't bother
 		return 0;
 	}
+	
+	logmsg(LL_VERBOSE, "Reporting new data\n");
 	
 	// Dump messages to file
 	
@@ -411,6 +416,7 @@ int send_values (struct dsmr_data_struct *data, FILE *out) {
 		
 		if (sockfd <= 0) {
 			
+            logmsg(LL_ERROR, "Socket closed\n");
 			// Socket seems to be closed, try reopening connection
 			send_header(data, out);
 			return -3;
@@ -421,11 +427,15 @@ int send_values (struct dsmr_data_struct *data, FILE *out) {
 			
 			if (result < 0) {
 				
+			    logmsg(LL_ERROR, "Sending failed\n");
+				
 				// Sending failed, try reconnecting
 				send_header(data, out);
 				return -4;
 				
 				// TODO: use separate buffers for header and values, resend values
+			} else {
+			        logmsg(LL_NORMAL, "Data successfully sent (%lu bytes)\n", size);
 			}
 		}
 	}
@@ -438,7 +448,7 @@ int main (int argc, char **argv)
 {
 	
 	init_msglogger();
-	logger.loglevel = LL_VERBOSE;
+	logger.loglevel = LL_NORMAL;
 	
 	char *infile, *outfile = NULL;
 	
