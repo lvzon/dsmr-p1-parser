@@ -277,7 +277,7 @@ int send_header (struct dsmr_data_struct *data, FILE *out) {
     			result = send_data(mpackdata, size);
     			
     			if (result < 0) {
-					logmsg(LL_WARN, "Failed to send header\n");
+					logmsg(LL_WARNING, "Failed to send header\n");
     				sleep(1);
     			} else {
 			        logmsg(LL_NORMAL, "Header successfully sent (%lu bytes)\n", size);
@@ -285,7 +285,7 @@ int send_header (struct dsmr_data_struct *data, FILE *out) {
     			
     		} else {
     			
-				logmsg(LL_WARN, "Failed to open server socket\n");
+				logmsg(LL_WARNING, "Failed to open server socket\n");
     			sleep(1);
     		}
     		
