@@ -605,6 +605,7 @@ int telegram_parser_read_d0 (telegram_parser *obj, int wakeup)
 	
 	// We'll try parsing the telegram (even if we receive only a partial one)
 	
+	obj->data->timestamp = 0;		// Clear previous timestamp
 	obj->len = idx;
 	parser_init(&(obj->parser));
 	parser_execute(&(obj->parser), (const char *)(obj->buffer), obj->len, 1);
