@@ -65,7 +65,7 @@ On Raspbian and some other systems, you may have to install a C-compiler to comp
 git clone https://github.com/lvzon/dsmr-p1-parser.git
 cd dsmr-p1-parser
 ./make.sh
-./p1-test /dev/ttyUSB0 errors.dat
+./p1-test-p1 /dev/ttyUSB0 errors.dat
 ```
 
 If valid telegrams are coming in, you should see something like this within about 10 seconds:
