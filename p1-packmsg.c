@@ -473,6 +473,8 @@ int main (int argc, char **argv)
 			force_power = 1;
 		} else if (strcmp(argv[argstart], "--force-gas") == 0) {
 			report_gas = 1;
+		} else if (strcmp(argv[argstart], "--no-gas") == 0) {
+			report_gas = 0;
 		} else if (strcmp(argv[argstart], "--delay") == 0 && argc >= argstart + 1) {
 			delay = strtol(argv[argstart + 1], NULL, 0);
 			if (delay >= 0) {
