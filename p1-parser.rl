@@ -520,6 +520,7 @@ long long int TST_to_time (struct parser *fsm, int arg_idx) {
 	pfail = '0-0:96.7.21(' uinteger ')' crlf @pfail; 
 	longpfail = '0-0:96.7.9(' uinteger ')' crlf @longpfail; 
 	
+	pfailevents_empty = '1-0:99.97.0()' crlf @pfailevents @clearargs;
 	pfailevents = '1-0:99.97.0(' uinteger ')' @pfailevents @clearargs;	# Power failure events
 	pfailevent = tstval '(' uinteger unit ')' @pfailevent @clearargs;		# Single power failure event
 	pfaileventlog = pfailevents '(0-0:96.7.19)'? pfailevent* crlf;	# Power failure event log, with zero or more events
@@ -586,7 +587,7 @@ long long int TST_to_time (struct parser *fsm, int arg_idx) {
 	power_object = P_in | P_out | P_in_L1 | P_out_L1 | P_in_L2 | P_out_L2 | P_in_L3 | P_out_L3 | P_threshold;
 	current_object = I_L1 | I_L2 | I_L3;
 	voltage_object = V_L1 | V_L2 | V_L3;
-	power_quality_object = pfail | longpfail | pfaileventlog | V_sags_L1 | V_swells_L1 | V_sags_L2 | V_swells_L2 | V_sags_L3 | V_swells_L3;
+	power_quality_object = pfail | longpfail | pfailevents_empty | pfaileventlog | V_sags_L1 | V_swells_L1 | V_sags_L2 | V_swells_L2 | V_sags_L3 | V_swells_L3;
 	mbusdev_object = dev_type | dev_id | dev_counter | dev_valve | dev_counter_timeseries | dev_counter_cold_timeseries;
 	slavedev_legacy_object = gas_id_old | gas_count_old;
 	message_object = textmsgcodes | textmsg | textmsgcodes_empty | textmsg_empty;
@@ -607,6 +608,8 @@ long long int TST_to_time (struct parser *fsm, int arg_idx) {
 
 void parser_init( struct parser *fsm )
 {
+	init_msglogger();
+
 	int arg;
 	
 	fsm->buflen = 0;

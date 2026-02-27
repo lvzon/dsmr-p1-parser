@@ -110,6 +110,7 @@ size_t read_telegram (int fd, uint8_t *buf, size_t bufsize, size_t maxfailbytes)
 
 int telegram_parser_open (telegram_parser *obj, char *infile, size_t bufsize, int timeout, char *dumpfile)
 {
+	init_msglogger();
 	if (obj == NULL) {
 		return -1;
 	}

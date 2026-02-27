@@ -27,12 +27,12 @@ typedef struct msglogger_struct {
 	
 } messagelogger;
 
-messagelogger logger;
+static messagelogger logger;
 
-static inline void init_msglogger() {
+static void init_msglogger() {
 		logger.logfile_name = NULL;
 		logger.logfile = stdout;
-		logger.loglevel = LL_NORMAL;
+		logger.loglevel = LL_VERBOSE;
 }
 
 
